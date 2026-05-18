@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="10dp">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:gravity="center_vertical" android:orientation="horizontal" android:padding="16dp">
+        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1" android:orientation="vertical">
+            <TextView android:id="@+id/category_name" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:textColor="@color/kitatrack_primary_text"
+                android:textSize="16sp" android:textStyle="bold" />
+            <TextView android:id="@+id/category_type" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:layout_marginTop="2dp"
+                android:textColor="@color/kitatrack_secondary_text" />
+        </LinearLayout>
+        <com.google.android.material.button.MaterialButton android:id="@+id/edit_category_button"
+            style="@style/Widget.Material3.Button.TextButton" android:layout_width="wrap_content"
+            android:layout_height="wrap_content" android:text="Edit" android:textAllCaps="false" />
+        <com.google.android.material.button.MaterialButton android:id="@+id/delete_category_button"
+            style="@style/Widget.Material3.Button.TextButton" android:layout_width="wrap_content"
+            android:layout_height="wrap_content" android:text="Delete" android:textAllCaps="false" />
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

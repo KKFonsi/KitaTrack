@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@color/kitatrack_background" android:orientation="vertical" android:padding="20dp">
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="Categories" android:textColor="@color/kitatrack_primary_text"
+        android:textSize="28sp" android:textStyle="bold" />
+    <com.google.android.material.button.MaterialButtonToggleGroup
+        android:id="@+id/category_type_toggle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        app:singleSelection="true"
+        app:selectionRequired="true"
+        xmlns:app="http://schemas.android.com/apk/res-auto">
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/expense_categories_button"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Expenses"
+            android:textAllCaps="false" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/income_sources_button"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Income Sources"
+            android:textAllCaps="false" />
+    </com.google.android.material.button.MaterialButtonToggleGroup>
+    <com.google.android.material.button.MaterialButton android:id="@+id/add_category_button"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="16dp" android:minHeight="48dp" android:text="Add custom category"
+        android:textAllCaps="false" />
+    <androidx.recyclerview.widget.RecyclerView android:id="@+id/categories_list"
+        android:layout_width="match_parent" android:layout_height="0dp"
+        android:layout_marginTop="16dp" android:layout_weight="1" />
+</LinearLayout>

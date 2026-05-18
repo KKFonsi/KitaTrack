@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="8dp">
+    <com.google.android.material.textfield.TextInputLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Goal name">
+        <com.google.android.material.textfield.TextInputEditText android:id="@+id/piggy_name_input" android:layout_width="match_parent" android:layout_height="wrap_content"/>
+    </com.google.android.material.textfield.TextInputLayout>
+    <com.google.android.material.textfield.TextInputLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:hint="Target amount">
+        <com.google.android.material.textfield.TextInputEditText android:id="@+id/piggy_target_input" android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="numberDecimal"/>
+    </com.google.android.material.textfield.TextInputLayout>
+    <com.google.android.material.textfield.TextInputLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:hint="Weekly income prediction">
+        <com.google.android.material.textfield.TextInputEditText android:id="@+id/piggy_weekly_income_input" android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="numberDecimal"/>
+    </com.google.android.material.textfield.TextInputLayout>
+    <com.google.android.material.textfield.TextInputLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:hint="Target date (optional)">
+        <com.google.android.material.textfield.TextInputEditText android:id="@+id/piggy_target_date_input" android:layout_width="match_parent" android:layout_height="wrap_content" android:focusable="false" android:clickable="true"/>
+    </com.google.android.material.textfield.TextInputLayout>
+    <com.google.android.material.textfield.TextInputLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:hint="Notes (optional)">
+        <com.google.android.material.textfield.TextInputEditText android:id="@+id/piggy_notes_input" android:layout_width="match_parent" android:layout_height="wrap_content"/>
+    </com.google.android.material.textfield.TextInputLayout>
+    <TextView android:id="@+id/piggy_plan_text" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:textColor="@color/kitatrack_secondary_text"/>
+    <com.google.android.material.slider.Slider android:id="@+id/piggy_percent_slider" android:layout_width="match_parent" android:layout_height="wrap_content" android:visibility="gone"/>
+    <TextView android:id="@+id/piggy_selected_percent_text" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="@color/kitatrack_primary_text" android:visibility="gone"/>
+    <com.google.android.material.switchmaterial.SwitchMaterial android:id="@+id/piggy_over_save_switch" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:text="Allow over-saving"/>
+    <com.google.android.material.switchmaterial.SwitchMaterial android:id="@+id/piggy_active_switch" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Active"/>
+</LinearLayout>

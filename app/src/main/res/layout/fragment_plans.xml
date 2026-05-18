@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@color/kitatrack_background">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="vertical" android:padding="20dp">
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="Plans" android:textColor="@color/kitatrack_primary_text"
+            android:textSize="28sp" android:textStyle="bold"/>
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="8dp" android:text="Budgets"
+            android:textColor="@color/kitatrack_primary_text" android:textSize="20sp" android:textStyle="bold"/>
+        <TextView android:id="@+id/budget_empty_state" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:layout_marginTop="12dp"
+            android:text="No budgets yet. Create a weekly or monthly budget to start tracking your spending."
+            android:textColor="@color/kitatrack_secondary_text"/>
+        <LinearLayout android:id="@+id/budget_list" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:orientation="vertical"/>
+        <com.google.android.material.button.MaterialButton android:id="@+id/add_budget_button"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="16dp" android:text="Add Budget" android:textAllCaps="false"/>
+        <com.google.android.material.button.MaterialButton android:id="@+id/manage_categories_button"
+            style="@style/Widget.Material3.Button.OutlinedButton" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:layout_marginTop="8dp"
+            android:text="Manage Categories" android:textAllCaps="false"/>
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="24dp" android:text="Piggy Banks"
+            android:textColor="@color/kitatrack_primary_text" android:textSize="20sp" android:textStyle="bold"/>
+        <TextView android:id="@+id/piggy_empty_state" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:layout_marginTop="12dp"
+            android:text="No savings goals yet. Create a piggy bank to start saving for something."
+            android:textColor="@color/kitatrack_secondary_text"/>
+        <LinearLayout android:id="@+id/piggy_list" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:orientation="vertical"/>
+        <com.google.android.material.button.MaterialButton android:id="@+id/add_piggy_button"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="16dp" android:text="Add Piggy Bank" android:textAllCaps="false"/>
+    </LinearLayout>
+</ScrollView>

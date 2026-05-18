@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@color/kitatrack_background" android:orientation="vertical" android:padding="20dp">
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="Transaction History" android:textColor="@color/kitatrack_primary_text"
+        android:textSize="28sp" android:textStyle="bold" />
+    <com.google.android.material.chip.ChipGroup
+        android:id="@+id/history_filters"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        app:singleSelection="true">
+        <com.google.android.material.chip.Chip android:id="@+id/filter_all" style="@style/Widget.Material3.Chip.Filter"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="All" android:checked="true" />
+        <com.google.android.material.chip.Chip android:id="@+id/filter_income" style="@style/Widget.Material3.Chip.Filter"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="Income" />
+        <com.google.android.material.chip.Chip android:id="@+id/filter_expense" style="@style/Widget.Material3.Chip.Filter"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="Expense" />
+        <com.google.android.material.chip.Chip android:id="@+id/filter_this_week" style="@style/Widget.Material3.Chip.Filter"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="This Week" />
+        <com.google.android.material.chip.Chip android:id="@+id/filter_this_month" style="@style/Widget.Material3.Chip.Filter"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="This Month" />
+    </com.google.android.material.chip.ChipGroup>
+    <TextView android:id="@+id/history_empty_state" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:layout_marginTop="16dp"
+        android:text="No transactions yet. Start by adding your first income or expense."
+        android:textColor="@color/kitatrack_secondary_text" />
+    <androidx.recyclerview.widget.RecyclerView android:id="@+id/history_list"
+        android:layout_width="match_parent" android:layout_height="0dp"
+        android:layout_marginTop="12dp" android:layout_weight="1" />
+</LinearLayout>

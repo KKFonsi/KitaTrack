@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/main_nav_graph"
+    app:startDestination="@id/dashboardFragment">
+
+    <fragment
+        android:id="@+id/dashboardFragment"
+        android:name="com.example.kitatrack.ui.dashboard.DashboardFragment"
+        android:label="Dashboard">
+        <action
+            android:id="@+id/action_dashboardFragment_to_addTransactionFragment"
+            app:destination="@id/addTransactionFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/historyFragment"
+        android:name="com.example.kitatrack.ui.history.HistoryFragment"
+        android:label="History">
+        <action
+            android:id="@+id/action_historyFragment_to_addTransactionFragment"
+            app:destination="@id/addTransactionFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/reportsFragment"
+        android:name="com.example.kitatrack.ui.reports.ReportsFragment"
+        android:label="Reports">
+        <action
+            android:id="@+id/action_reportsFragment_to_monthlySummaryFragment"
+            app:destination="@id/monthlySummaryFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/monthlySummaryFragment"
+        android:name="com.example.kitatrack.ui.summary.MonthlySummaryFragment"
+        android:label="Monthly Summary" />
+    <fragment
+        android:id="@+id/plansFragment"
+        android:name="com.example.kitatrack.ui.plans.PlansFragment"
+        android:label="Plans">
+        <action
+            android:id="@+id/action_plansFragment_to_categoriesFragment"
+            app:destination="@id/categoriesFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/settingsFragment"
+        android:name="com.example.kitatrack.ui.settings.SettingsFragment"
+        android:label="Settings" />
+    <fragment
+        android:id="@+id/addTransactionFragment"
+        android:name="com.example.kitatrack.ui.addtransaction.AddTransactionFragment"
+        android:label="Add Transaction">
+        <argument
+            android:name="transactionId"
+            app:argType="long"
+            android:defaultValue="-1L" />
+        <argument
+            android:name="initialType"
+            app:argType="string"
+            android:defaultValue="EXPENSE" />
+    </fragment>
+    <fragment
+        android:id="@+id/categoriesFragment"
+        android:name="com.example.kitatrack.ui.categories.CategoriesFragment"
+        android:label="Categories" />
+</navigation>

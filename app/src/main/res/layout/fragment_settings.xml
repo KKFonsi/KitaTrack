@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/kitatrack_background">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Settings"
+            android:textColor="@color/kitatrack_primary_text"
+            android:textSize="28sp"
+            android:textStyle="bold" />
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="KitaTrack keeps your data local and offline-first."
+            android:textColor="@color/kitatrack_secondary_text" />
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Data &amp; Backup"
+                    android:textColor="@color/kitatrack_primary_text"
+                    android:textSize="20sp"
+                    android:textStyle="bold" />
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="CSV is for spreadsheet viewing. JSON is for full app restore."
+                    android:textColor="@color/kitatrack_secondary_text" />
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/export_csv_button"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:text="Export Transactions to CSV"
+                    android:textAllCaps="false" />
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Export your transactions to a spreadsheet file that can be opened in Excel or Google Sheets."
+                    android:textColor="@color/kitatrack_muted_text" />
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/export_json_button"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:text="Export Full JSON Backup"
+                    android:textAllCaps="false" />
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Export a full backup that can restore your KitaTrack data later."
+                    android:textColor="@color/kitatrack_muted_text" />
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/import_json_button"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:text="Import JSON Backup"
+                    android:textAllCaps="false" />
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Importing a backup can merge with current data or replace it after confirmation. Make sure this is the correct file."
+                    android:textColor="@color/kitatrack_muted_text" />
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/reset_data_button"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:text="Reset Local Data"
+                    android:textAllCaps="false" />
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Remove all current local data from this device. This cannot be undone unless you have a backup."
+                    android:textColor="@color/kitatrack_muted_text" />
+                <ProgressBar
+                    android:id="@+id/backup_progress"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:visibility="gone" />
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:text="Selected file"
+                    android:textColor="@color/kitatrack_secondary_text" />
+                <TextView
+                    android:id="@+id/selected_file_value"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="No file selected"
+                    android:textColor="@color/kitatrack_primary_text"
+                    android:textStyle="bold" />
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="Validation status"
+                    android:textColor="@color/kitatrack_secondary_text" />
+                <TextView
+                    android:id="@+id/validation_status_value"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Select a JSON backup to validate it."
+                    android:textColor="@color/kitatrack_primary_text" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+    </LinearLayout>
+</ScrollView>

@@ -1,0 +1,28 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <style name="Base.Theme.KitaTrack" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/kitatrack_primary_green</item>
+        <item name="colorOnPrimary">@color/kitatrack_on_accent</item>
+        <item name="colorSecondary">@color/kitatrack_soft_mint</item>
+        <item name="colorOnSecondary">@color/kitatrack_primary_text</item>
+        <item name="colorTertiary">@color/kitatrack_warning_yellow</item>
+        <item name="colorSurface">@color/kitatrack_card_background</item>
+        <item name="colorSurfaceVariant">@color/kitatrack_secondary_background</item>
+        <item name="colorOutline">@color/kitatrack_subtle_border</item>
+        <item name="android:navigationBarColor">@color/kitatrack_bottom_nav_background</item>
+        <item name="android:statusBarColor">@color/kitatrack_background</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:windowBackground">@color/kitatrack_background</item>
+        <item name="android:colorAccent">@color/kitatrack_primary_green</item>
+        <item name="android:fontFamily">sans</item>
+        <item name="materialCardViewStyle">@style/Widget.KitaTrack.Card</item>
+    </style>
+
+    <style name="Widget.KitaTrack.Card" parent="Widget.Material3.CardView.Elevated">
+        <item name="cardCornerRadius">20dp</item>
+        <item name="cardElevation">0dp</item>
+        <item name="cardBackgroundColor">@color/kitatrack_card_background</item>
+        <item name="strokeColor">@color/kitatrack_subtle_border</item>
+        <item name="strokeWidth">1dp</item>
+    </style>
+</resources>

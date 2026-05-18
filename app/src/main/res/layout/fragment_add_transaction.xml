@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@color/kitatrack_background">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="vertical" android:padding="20dp">
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="Add Transaction" android:textColor="@color/kitatrack_primary_text"
+            android:textSize="28sp" android:textStyle="bold" />
+        <com.google.android.material.button.MaterialButtonToggleGroup
+            android:id="@+id/type_toggle" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:layout_marginTop="20dp"
+            app:singleSelection="true" app:selectionRequired="true">
+            <com.google.android.material.button.MaterialButton android:id="@+id/income_button"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                android:text="Income" android:textAllCaps="false" />
+            <com.google.android.material.button.MaterialButton android:id="@+id/expense_button"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                android:text="Expense" android:textAllCaps="false" />
+        </com.google.android.material.button.MaterialButtonToggleGroup>
+
+        <com.google.android.material.textfield.TextInputLayout android:id="@+id/amount_layout"
+            android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="18dp"
+            android:hint="Amount">
+            <com.google.android.material.textfield.TextInputEditText android:id="@+id/amount_input"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:inputType="numberDecimal" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout android:id="@+id/category_layout"
+            style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+            android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp"
+            android:hint="Category">
+            <AutoCompleteTextView android:id="@+id/category_input" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:inputType="none" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout android:id="@+id/description_layout"
+            android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp"
+            android:hint="Description">
+            <com.google.android.material.textfield.TextInputEditText android:id="@+id/description_input"
+                android:layout_width="match_parent" android:layout_height="wrap_content" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout android:id="@+id/date_layout"
+            android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp"
+            android:hint="Date">
+            <com.google.android.material.textfield.TextInputEditText android:id="@+id/date_input"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:focusable="false" android:clickable="true" />
+        </com.google.android.material.textfield.TextInputLayout>
+        <com.google.android.material.textfield.TextInputLayout android:id="@+id/payment_source_layout"
+            style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+            android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp"
+            android:hint="Pay from">
+            <AutoCompleteTextView android:id="@+id/payment_source_input" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:inputType="none"/>
+        </com.google.android.material.textfield.TextInputLayout>
+        <com.google.android.material.textfield.TextInputLayout android:id="@+id/payment_piggy_layout"
+            style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+            android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp"
+            android:hint="Piggy bank">
+            <AutoCompleteTextView android:id="@+id/payment_piggy_input" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:inputType="none"/>
+        </com.google.android.material.textfield.TextInputLayout>
+        <TextView android:id="@+id/allocation_preview" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="14dp" android:textColor="@color/kitatrack_secondary_text"/>
+
+        <com.google.android.material.textfield.TextInputLayout android:id="@+id/notes_layout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:layout_marginTop="14dp" android:hint="Notes (optional)">
+            <com.google.android.material.textfield.TextInputEditText android:id="@+id/notes_input"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:minLines="2" android:gravity="top" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.button.MaterialButton android:id="@+id/save_button"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="20dp" android:minHeight="52dp"
+            android:textAllCaps="false" />
+    </LinearLayout>
+</ScrollView>

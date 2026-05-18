@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:orientation="vertical" android:padding="8dp">
+    <com.google.android.material.textfield.TextInputLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Budget name">
+        <com.google.android.material.textfield.TextInputEditText android:id="@+id/budget_name_input" android:layout_width="match_parent" android:layout_height="wrap_content"/>
+    </com.google.android.material.textfield.TextInputLayout>
+    <com.google.android.material.textfield.TextInputLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:hint="Limit amount">
+        <com.google.android.material.textfield.TextInputEditText android:id="@+id/budget_amount_input" android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="numberDecimal"/>
+    </com.google.android.material.textfield.TextInputLayout>
+    <com.google.android.material.textfield.TextInputLayout style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+        android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:hint="Budget type">
+        <AutoCompleteTextView android:id="@+id/budget_type_input" android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="none"/>
+    </com.google.android.material.textfield.TextInputLayout>
+    <com.google.android.material.textfield.TextInputLayout android:id="@+id/budget_category_layout" style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+        android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:hint="Category (for category budgets)">
+        <AutoCompleteTextView android:id="@+id/budget_category_input" android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="none"/>
+    </com.google.android.material.textfield.TextInputLayout>
+    <TextView
+        android:id="@+id/budget_category_help"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:text="Choose the spending category this budget should track."
+        android:textColor="@color/kitatrack_muted_text"
+        android:textSize="13sp"/>
+    <com.google.android.material.switchmaterial.SwitchMaterial android:id="@+id/budget_active_switch"
+        android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:text="Active"/>
+</LinearLayout>

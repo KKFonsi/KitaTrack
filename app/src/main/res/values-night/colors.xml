@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="kitatrack_primary_green">#4ADE80</color>
+    <color name="kitatrack_deep_green_accent">#22C55E</color>
+    <color name="kitatrack_soft_mint">#1F3D2C</color>
+    <color name="kitatrack_safe_balance_highlight">#86EFAC</color>
+    <color name="kitatrack_warning_yellow">#FACC15</color>
+    <color name="kitatrack_soft_warning_background">#3A3215</color>
+    <color name="kitatrack_expense_red">#F87171</color>
+    <color name="kitatrack_soft_danger_background">#3A1F1F</color>
+    <color name="kitatrack_background">#0F1411</color>
+    <color name="kitatrack_secondary_background">#151C18</color>
+    <color name="kitatrack_card_background">#1B2420</color>
+    <color name="kitatrack_elevated_card_background">#223028</color>
+    <color name="kitatrack_bottom_nav_background">#121A16</color>
+    <color name="kitatrack_primary_text">#F3F4F6</color>
+    <color name="kitatrack_secondary_text">#D1D5DB</color>
+    <color name="kitatrack_muted_text">#9CA3AF</color>
+    <color name="kitatrack_disabled_text">#6B7280</color>
+    <color name="kitatrack_subtle_border">#2D3A33</color>
+    <color name="kitatrack_strong_border">#3F4F46</color>
+    <color name="kitatrack_divider">#26322C</color>
+    <color name="kitatrack_on_accent">#0F1411</color>
+    <color name="white">#FFFFFFFF</color>
+</resources>
