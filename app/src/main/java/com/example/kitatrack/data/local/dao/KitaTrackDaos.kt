@@ -13,7 +13,9 @@ import com.example.kitatrack.data.local.entity.PiggyBankEntity
 import com.example.kitatrack.data.local.entity.PiggyBankTransactionEntity
 import com.example.kitatrack.data.local.entity.PiggyBankMissedContributionEntity
 import com.example.kitatrack.data.local.entity.DebtEntity
+import com.example.kitatrack.data.local.entity.DebtTransactionEntity
 import com.example.kitatrack.data.local.entity.SubscriptionEntity
+import com.example.kitatrack.data.local.entity.SubscriptionTransactionEntity
 import com.example.kitatrack.data.local.entity.MonthlySummaryEntity
 import com.example.kitatrack.data.local.entity.AppSettingsEntity
 import com.example.kitatrack.data.local.model.TransactionWithCategory
@@ -275,15 +277,51 @@ interface PiggyBankMissedContributionDao {
 }
 @Dao
 interface DebtDao {
+    @Insert suspend fun insert(item: DebtEntity): Long
+    @Update suspend fun update(item: DebtEntity)
+    @Delete suspend fun delete(item: DebtEntity)
+    @Query("SELECT * FROM debts WHERE id = :id LIMIT 1") suspend fun getById(id: Long): DebtEntity?
+    @Query("SELECT * FROM debts WHERE isArchived = 0 ORDER BY isActive DESC, nextDueDate ASC, updatedAt DESC")
+    fun getAll(): Flow<List<DebtEntity>>
+    @Query("SELECT * FROM debts WHERE isActive = 1 AND isArchived = 0 ORDER BY nextDueDate ASC")
+    fun getActive(): Flow<List<DebtEntity>>
     @Query("SELECT * FROM debts ORDER BY id ASC") suspend fun getAllForExport(): List<DebtEntity>
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertAll(items: List<DebtEntity>)
     @Query("DELETE FROM debts") suspend fun clearAll()
 }
 @Dao
+interface DebtTransactionDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insert(item: DebtTransactionEntity): Long
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertAll(items: List<DebtTransactionEntity>)
+    @Query("SELECT * FROM debt_transactions WHERE debtId = :debtId ORDER BY date DESC, createdAt DESC")
+    fun getForDebt(debtId: Long): Flow<List<DebtTransactionEntity>>
+    @Query("SELECT * FROM debt_transactions ORDER BY id ASC") suspend fun getAllForExport(): List<DebtTransactionEntity>
+    @Query("SELECT COALESCE(SUM(amount), 0) FROM debt_transactions WHERE transactionType = 'RESERVE_ALLOCATION' AND date BETWEEN :startMillis AND :endMillis")
+    fun getReserveAllocationBetween(startMillis: Long, endMillis: Long): Flow<Long>
+    @Query("DELETE FROM debt_transactions") suspend fun clearAll()
+}
+@Dao
 interface SubscriptionDao {
+    @Insert suspend fun insert(item: SubscriptionEntity): Long
+    @Update suspend fun update(item: SubscriptionEntity)
+    @Delete suspend fun delete(item: SubscriptionEntity)
+    @Query("SELECT * FROM subscriptions WHERE id = :id LIMIT 1") suspend fun getById(id: Long): SubscriptionEntity?
+    @Query("SELECT * FROM subscriptions ORDER BY isArchived ASC, isActive DESC, nextBillingDate ASC, name ASC")
+    fun getAll(): Flow<List<SubscriptionEntity>>
+    @Query("SELECT * FROM subscriptions WHERE isActive = 1 AND isArchived = 0 ORDER BY nextBillingDate ASC")
+    fun getActive(): Flow<List<SubscriptionEntity>>
     @Query("SELECT * FROM subscriptions ORDER BY id ASC") suspend fun getAllForExport(): List<SubscriptionEntity>
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertAll(items: List<SubscriptionEntity>)
     @Query("DELETE FROM subscriptions") suspend fun clearAll()
+}
+@Dao
+interface SubscriptionTransactionDao {
+    @Insert suspend fun insert(item: SubscriptionTransactionEntity): Long
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertAll(items: List<SubscriptionTransactionEntity>)
+    @Query("SELECT * FROM subscription_transactions WHERE subscriptionId = :subscriptionId ORDER BY date DESC, createdAt DESC")
+    fun getForSubscription(subscriptionId: Long): Flow<List<SubscriptionTransactionEntity>>
+    @Query("SELECT * FROM subscription_transactions ORDER BY id ASC") suspend fun getAllForExport(): List<SubscriptionTransactionEntity>
+    @Query("DELETE FROM subscription_transactions") suspend fun clearAll()
 }
 @Dao
 interface MonthlySummaryDao {

@@ -9,6 +9,8 @@ import com.example.kitatrack.data.repository.CategoryRepository
 import com.example.kitatrack.data.repository.TransactionRepository
 import com.example.kitatrack.data.repository.BudgetRepository
 import com.example.kitatrack.data.repository.PiggyBankRepository
+import com.example.kitatrack.data.repository.DebtRepository
+import com.example.kitatrack.data.repository.SubscriptionRepository
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.first
@@ -25,7 +27,9 @@ class AddTransactionViewModel(
     private val transactionRepository: TransactionRepository,
     categoryRepository: CategoryRepository,
     private val budgetRepository: BudgetRepository,
-    private val piggyBankRepository: PiggyBankRepository
+    private val piggyBankRepository: PiggyBankRepository,
+    private val debtRepository: DebtRepository,
+    private val subscriptionRepository: SubscriptionRepository
 ) : ViewModel() {
     val expenseCategories = categoryRepository.getExpenseCategories()
     val incomeSources = categoryRepository.getIncomeSources()
@@ -71,7 +75,9 @@ class AddTransactionViewModel(
                             )
                         )
                         if (type == TransactionType.INCOME) {
-                            piggyBankRepository.allocateFromIncome(insertedId, amountInCentavos, occurredAt)
+                            val debtAllocated = debtRepository.allocateFromIncome(insertedId, amountInCentavos, occurredAt)
+                            val piggyAllocated = piggyBankRepository.allocateFromIncome(insertedId, amountInCentavos - debtAllocated, occurredAt)
+                            subscriptionRepository.allocateFromIncome(insertedId, amountInCentavos - debtAllocated - piggyAllocated, occurredAt)
                         } else if (piggyBankIdForExpense != null) {
                             piggyBankRepository.deductExpense(piggyBankIdForExpense, amountInCentavos, insertedId)
                         }
@@ -115,10 +121,12 @@ class AddTransactionViewModel(
         private val transactionRepository: TransactionRepository,
         private val categoryRepository: CategoryRepository,
         private val budgetRepository: BudgetRepository,
-        private val piggyBankRepository: PiggyBankRepository
+        private val piggyBankRepository: PiggyBankRepository,
+        private val debtRepository: DebtRepository,
+        private val subscriptionRepository: SubscriptionRepository
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            AddTransactionViewModel(transactionRepository, categoryRepository, budgetRepository, piggyBankRepository) as T
+            AddTransactionViewModel(transactionRepository, categoryRepository, budgetRepository, piggyBankRepository, debtRepository, subscriptionRepository) as T
     }
 }

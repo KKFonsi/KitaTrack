@@ -20,7 +20,9 @@ import kotlinx.coroutines.launch
 
 class DashboardFragment : Fragment(R.layout.fragment_dashboard) {
     private val app by lazy { requireActivity().application as KitaTrackApplication }
-    private val viewModel by viewModels<DashboardViewModel> { DashboardViewModel.Factory(app.transactionRepository, app.budgetRepository, app.piggyBankRepository) }
+    private val viewModel by viewModels<DashboardViewModel> {
+        DashboardViewModel.Factory(app.transactionRepository, app.budgetRepository, app.piggyBankRepository, app.debtRepository, app.subscriptionRepository)
+    }
     private val balanceHelper by lazy { HistoryViewModel(app.transactionRepository) }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -36,19 +38,25 @@ class DashboardFragment : Fragment(R.layout.fragment_dashboard) {
                     view.findViewById<TextView>(R.id.month_income_value).text = Formatters.peso(state.monthlyIncome)
                     view.findViewById<TextView>(R.id.month_expenses_value).text = Formatters.peso(state.monthlyExpenses)
                     view.findViewById<TextView>(R.id.month_net_value).text = Formatters.peso(state.monthlyNet)
-                    view.findViewById<TextView>(R.id.highest_expense_value).text = state.highestExpense?.let { Formatters.peso(it.transaction.amount) } ?: "₱0.00"
-                    view.findViewById<TextView>(R.id.top_category_value).text = state.topCategoryName ?: "—"
+                    view.findViewById<TextView>(R.id.highest_expense_value).text = state.highestExpense?.let { Formatters.peso(it.transaction.amount) } ?: "?0.00"
+                    view.findViewById<TextView>(R.id.top_category_value).text = state.topCategoryName ?: "�"
                     view.findViewById<TextView>(R.id.weekly_budget_value).text = "Weekly Budget Left: " + (state.weeklyBudget?.let { Formatters.peso(it.remainingAmount) } ?: "No active budget")
                     view.findViewById<TextView>(R.id.monthly_budget_value).text = "Monthly Budget Left: " + (state.monthlyBudget?.let { Formatters.peso(it.remainingAmount) } ?: "No active budget")
                     view.findViewById<TextView>(R.id.budget_warning_value).text = state.budgetWarning ?: "Create a budget to track spending."
                     view.findViewById<TextView>(R.id.piggy_bank_total_value).text = Formatters.peso(state.piggyBankTotal)
+                    view.findViewById<TextView>(R.id.debt_reserve_value).text = Formatters.peso(state.debtReserve)
+                    view.findViewById<TextView>(R.id.subscription_reserve_value).text = Formatters.peso(state.subscriptionReserve)
                     view.findViewById<TextView>(R.id.total_money_tracked_value).text = Formatters.peso(state.totalMoneyTracked)
+                    view.findViewById<TextView>(R.id.debt_overview_value).text =
+                        "I owe: ${Formatters.peso(state.totalDebtIOwe)} | Reserve: ${Formatters.peso(state.debtReserve)}\nOwed to me: ${Formatters.peso(state.totalOwedToMe)} | Overdue: ${state.overdueDebtCount}\nNearest due: ${state.nearestDebtName ?: "None"}"
                     view.findViewById<TextView>(R.id.piggy_overview_value).text =
                         if (state.piggyBanksNeedingAdjustment > 0) {
-                            "${state.activePiggyBanks} active goals • ${state.piggyBanksNeedingAdjustment} need adjustment • ${Formatters.peso(state.missedPiggyContributionTotal)} planned savings missed"
+                            "${state.activePiggyBanks} active goals | ${state.piggyBanksNeedingAdjustment} need adjustment | ${Formatters.peso(state.missedPiggyContributionTotal)} planned savings missed"
                         } else {
-                            "${state.activePiggyBanks} active goals • reserved savings"
+                            "${state.activePiggyBanks} active goals | reserved savings"
                         }
+                    view.findViewById<TextView>(R.id.subscription_overview_value).text =
+                        "Reserve: ${Formatters.peso(state.subscriptionReserve)} | Upcoming: ${state.upcomingSubscriptionCount} | Overdue: ${state.overdueSubscriptionCount}\nNext due: ${state.nextSubscriptionName ?: "None"} | Monthly estimate: ${Formatters.peso(state.monthlySubscriptionEstimate)}"
                     view.findViewById<TextView>(R.id.recent_empty_state).visibility = if (state.recentTransactions.isEmpty()) View.VISIBLE else View.GONE
                     val balancesById = balanceHelper.withRunningBalances(state.allTransactions).associateBy { it.item.transaction.id }
                     adapter.submitList(state.recentTransactions.mapNotNull { balancesById[it.transaction.id] })

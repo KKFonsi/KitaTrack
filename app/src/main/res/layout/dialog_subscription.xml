@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/subscription_dialog_scroll"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:scrollbars="vertical">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="4dp"
+        android:paddingTop="8dp"
+        android:paddingEnd="4dp"
+        android:paddingBottom="8dp">
+        <com.google.android.material.textfield.TextInputLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Subscription name">
+            <com.google.android.material.textfield.TextInputEditText android:id="@+id/subscription_name_input" android:layout_width="match_parent" android:layout_height="wrap_content" android:singleLine="true"/>
+        </com.google.android.material.textfield.TextInputLayout>
+        <com.google.android.material.textfield.TextInputLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:hint="Amount">
+            <com.google.android.material.textfield.TextInputEditText android:id="@+id/subscription_amount_input" android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="numberDecimal" android:singleLine="true"/>
+        </com.google.android.material.textfield.TextInputLayout>
+        <com.google.android.material.textfield.TextInputLayout style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:hint="Billing cycle" app:endIconMode="dropdown_menu">
+            <com.google.android.material.textfield.MaterialAutoCompleteTextView android:id="@+id/subscription_cycle_input" android:layout_width="match_parent" android:layout_height="wrap_content" android:clickable="true" android:focusable="false" android:inputType="none" android:singleLine="true"/>
+        </com.google.android.material.textfield.TextInputLayout>
+        <com.google.android.material.textfield.TextInputLayout android:id="@+id/subscription_interval_layout" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:hint="Every X days">
+            <com.google.android.material.textfield.TextInputEditText android:id="@+id/subscription_interval_input" android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="number" android:singleLine="true"/>
+        </com.google.android.material.textfield.TextInputLayout>
+        <com.google.android.material.textfield.TextInputLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:hint="Next billing date">
+            <com.google.android.material.textfield.TextInputEditText android:id="@+id/subscription_due_input" android:layout_width="match_parent" android:layout_height="wrap_content" android:clickable="true" android:focusable="false" android:singleLine="true"/>
+        </com.google.android.material.textfield.TextInputLayout>
+        <com.google.android.material.textfield.TextInputLayout style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:hint="Category" app:endIconMode="dropdown_menu">
+            <com.google.android.material.textfield.MaterialAutoCompleteTextView android:id="@+id/subscription_category_input" android:layout_width="match_parent" android:layout_height="wrap_content" android:clickable="true" android:focusable="false" android:inputType="none" android:singleLine="true"/>
+        </com.google.android.material.textfield.TextInputLayout>
+        <com.google.android.material.textfield.TextInputLayout style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:hint="Importance" app:endIconMode="dropdown_menu">
+            <com.google.android.material.textfield.MaterialAutoCompleteTextView android:id="@+id/subscription_importance_input" android:layout_width="match_parent" android:layout_height="wrap_content" android:clickable="true" android:focusable="false" android:inputType="none" android:singleLine="true"/>
+        </com.google.android.material.textfield.TextInputLayout>
+        <com.google.android.material.textfield.TextInputLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:hint="Notes">
+            <com.google.android.material.textfield.TextInputEditText android:id="@+id/subscription_notes_input" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="top|start" android:maxLines="3" android:minLines="2"/>
+        </com.google.android.material.textfield.TextInputLayout>
+        <com.google.android.material.switchmaterial.SwitchMaterial android:id="@+id/subscription_reserve_switch" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:text="Reserve On"/>
+        <com.google.android.material.switchmaterial.SwitchMaterial android:id="@+id/subscription_reminder_switch" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Reminder On"/>
+        <com.google.android.material.switchmaterial.SwitchMaterial android:id="@+id/subscription_active_switch" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Active"/>
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

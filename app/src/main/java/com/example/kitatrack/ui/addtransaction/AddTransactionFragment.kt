@@ -26,7 +26,7 @@ import kotlinx.coroutines.flow.combine
 class AddTransactionFragment : Fragment(R.layout.fragment_add_transaction) {
     private val app by lazy { requireActivity().application as KitaTrackApplication }
     private val viewModel by viewModels<AddTransactionViewModel> {
-        AddTransactionViewModel.Factory(app.transactionRepository, app.categoryRepository, app.budgetRepository, app.piggyBankRepository)
+        AddTransactionViewModel.Factory(app.transactionRepository, app.categoryRepository, app.budgetRepository, app.piggyBankRepository, app.debtRepository, app.subscriptionRepository)
     }
 
     private var categories: List<CategoryEntity> = emptyList()
@@ -159,7 +159,7 @@ class AddTransactionFragment : Fragment(R.layout.fragment_add_transaction) {
                         paymentPiggyInput.setAdapter(ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, banks.map { it.name }))
                         paymentPiggyInput.setOnItemClickListener { _, _, pos, _ -> paymentPiggyBank = banks[pos] }
                         val totalPercent = banks.sumOf { it.selectedAllocationPercent }
-                        allocationPreview.text = if (totalPercent > 0) "Piggy Bank Allocation: $totalPercent% of income\nMain Balance: remaining income after savings" else "No automatic piggy bank allocation."
+                        allocationPreview.text = if (totalPercent > 0) "Debt Reserve is allocated first.\nPiggy Bank Allocation: $totalPercent% of income remaining after debt\nMain Balance: remaining income after reserves" else "Debt Reserve is allocated first. No automatic piggy bank allocation."
                     }
                 }
                 launch {

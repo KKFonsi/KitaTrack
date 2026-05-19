@@ -1,24 +1,124 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="8dp">
-    <com.google.android.material.textfield.TextInputLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Goal name">
-        <com.google.android.material.textfield.TextInputEditText android:id="@+id/piggy_name_input" android:layout_width="match_parent" android:layout_height="wrap_content"/>
-    </com.google.android.material.textfield.TextInputLayout>
-    <com.google.android.material.textfield.TextInputLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:hint="Target amount">
-        <com.google.android.material.textfield.TextInputEditText android:id="@+id/piggy_target_input" android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="numberDecimal"/>
-    </com.google.android.material.textfield.TextInputLayout>
-    <com.google.android.material.textfield.TextInputLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:hint="Weekly income prediction">
-        <com.google.android.material.textfield.TextInputEditText android:id="@+id/piggy_weekly_income_input" android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="numberDecimal"/>
-    </com.google.android.material.textfield.TextInputLayout>
-    <com.google.android.material.textfield.TextInputLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:hint="Target date (optional)">
-        <com.google.android.material.textfield.TextInputEditText android:id="@+id/piggy_target_date_input" android:layout_width="match_parent" android:layout_height="wrap_content" android:focusable="false" android:clickable="true"/>
-    </com.google.android.material.textfield.TextInputLayout>
-    <com.google.android.material.textfield.TextInputLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:hint="Notes (optional)">
-        <com.google.android.material.textfield.TextInputEditText android:id="@+id/piggy_notes_input" android:layout_width="match_parent" android:layout_height="wrap_content"/>
-    </com.google.android.material.textfield.TextInputLayout>
-    <TextView android:id="@+id/piggy_plan_text" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:textColor="@color/kitatrack_secondary_text"/>
-    <com.google.android.material.slider.Slider android:id="@+id/piggy_percent_slider" android:layout_width="match_parent" android:layout_height="wrap_content" android:visibility="gone"/>
-    <TextView android:id="@+id/piggy_selected_percent_text" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="@color/kitatrack_primary_text" android:visibility="gone"/>
-    <com.google.android.material.switchmaterial.SwitchMaterial android:id="@+id/piggy_over_save_switch" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:text="Allow over-saving"/>
-    <com.google.android.material.switchmaterial.SwitchMaterial android:id="@+id/piggy_active_switch" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Active"/>
-</LinearLayout>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/piggy_dialog_scroll"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:fillViewport="false"
+    android:overScrollMode="ifContentScrolls"
+    android:scrollbars="vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="8dp"
+        android:paddingTop="4dp"
+        android:paddingEnd="8dp"
+        android:paddingBottom="12dp">
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Goal name">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/piggy_name_input"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:hint="Target amount">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/piggy_target_input"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="numberDecimal" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:hint="Weekly income prediction">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/piggy_weekly_income_input"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="numberDecimal" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:hint="Target date">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/piggy_target_date_input"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:clickable="true"
+                android:focusable="false" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:hint="Notes (optional)">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/piggy_notes_input"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:maxLines="3" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <TextView
+            android:id="@+id/piggy_plan_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:lineSpacingExtra="2dp"
+            android:textColor="@color/kitatrack_secondary_text"
+            android:textSize="14sp" />
+
+        <com.google.android.material.slider.Slider
+            android:id="@+id/piggy_percent_slider"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/piggy_selected_percent_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:lineSpacingExtra="2dp"
+            android:textColor="@color/kitatrack_primary_text"
+            android:textSize="14sp"
+            android:visibility="gone" />
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/piggy_over_save_switch"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:minHeight="48dp"
+            android:text="Allow over-saving" />
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/piggy_active_switch"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            android:text="Active" />
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

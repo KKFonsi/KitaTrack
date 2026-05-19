@@ -8,21 +8,25 @@ import com.example.kitatrack.data.local.dao.AppSettingsDao
 import com.example.kitatrack.data.local.dao.BudgetDao
 import com.example.kitatrack.data.local.dao.CategoryDao
 import com.example.kitatrack.data.local.dao.DebtDao
+import com.example.kitatrack.data.local.dao.DebtTransactionDao
 import com.example.kitatrack.data.local.dao.MonthlySummaryDao
 import com.example.kitatrack.data.local.dao.PiggyBankDao
 import com.example.kitatrack.data.local.dao.PiggyBankTransactionDao
 import com.example.kitatrack.data.local.dao.PiggyBankMissedContributionDao
 import com.example.kitatrack.data.local.dao.SubscriptionDao
+import com.example.kitatrack.data.local.dao.SubscriptionTransactionDao
 import com.example.kitatrack.data.local.dao.TransactionDao
 import com.example.kitatrack.data.local.entity.AppSettingsEntity
 import com.example.kitatrack.data.local.entity.BudgetEntity
 import com.example.kitatrack.data.local.entity.CategoryEntity
 import com.example.kitatrack.data.local.entity.DebtEntity
+import com.example.kitatrack.data.local.entity.DebtTransactionEntity
 import com.example.kitatrack.data.local.entity.MonthlySummaryEntity
 import com.example.kitatrack.data.local.entity.PiggyBankEntity
 import com.example.kitatrack.data.local.entity.PiggyBankTransactionEntity
 import com.example.kitatrack.data.local.entity.PiggyBankMissedContributionEntity
 import com.example.kitatrack.data.local.entity.SubscriptionEntity
+import com.example.kitatrack.data.local.entity.SubscriptionTransactionEntity
 import com.example.kitatrack.data.local.entity.TransactionEntity
 
 @Database(
@@ -34,11 +38,13 @@ import com.example.kitatrack.data.local.entity.TransactionEntity
         PiggyBankTransactionEntity::class,
         PiggyBankMissedContributionEntity::class,
         DebtEntity::class,
+        DebtTransactionEntity::class,
         SubscriptionEntity::class,
+        SubscriptionTransactionEntity::class,
         MonthlySummaryEntity::class,
         AppSettingsEntity::class
     ],
-    version = 7,
+    version = 9,
     exportSchema = true
 )
 abstract class KitaTrackDatabase : RoomDatabase() {
@@ -49,7 +55,9 @@ abstract class KitaTrackDatabase : RoomDatabase() {
     abstract fun piggyBankTransactionDao(): PiggyBankTransactionDao
     abstract fun piggyBankMissedContributionDao(): PiggyBankMissedContributionDao
     abstract fun debtDao(): DebtDao
+    abstract fun debtTransactionDao(): DebtTransactionDao
     abstract fun subscriptionDao(): SubscriptionDao
+    abstract fun subscriptionTransactionDao(): SubscriptionTransactionDao
     abstract fun monthlySummaryDao(): MonthlySummaryDao
     abstract fun appSettingsDao(): AppSettingsDao
 
@@ -202,6 +210,150 @@ abstract class KitaTrackDatabase : RoomDatabase() {
                         affectedWeeksCount INTEGER,
                         createdAt INTEGER NOT NULL,
                         updatedAt INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
+
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS debts_new (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        name TEXT NOT NULL,
+                        personName TEXT,
+                        debtType TEXT NOT NULL,
+                        totalAmount INTEGER NOT NULL,
+                        amountPaid INTEGER NOT NULL,
+                        remainingAmount INTEGER NOT NULL,
+                        reservedAmount INTEGER NOT NULL,
+                        dueDate INTEGER,
+                        nextDueDate INTEGER,
+                        startDate INTEGER,
+                        endDate INTEGER,
+                        paymentFrequency TEXT NOT NULL,
+                        customIntervalDays INTEGER,
+                        installmentAmount INTEGER,
+                        isRecurring INTEGER NOT NULL,
+                        status TEXT NOT NULL,
+                        notes TEXT,
+                        createdAt INTEGER NOT NULL,
+                        updatedAt INTEGER NOT NULL,
+                        isActive INTEGER NOT NULL,
+                        isArchived INTEGER NOT NULL,
+                        completedAt INTEGER,
+                        priority INTEGER NOT NULL,
+                        autoReserveEnabled INTEGER NOT NULL,
+                        reservePercent INTEGER,
+                        fixedReserveAmount INTEGER,
+                        lastPaymentDate INTEGER,
+                        reminderEnabled INTEGER NOT NULL,
+                        reminderTimingDays INTEGER
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    INSERT INTO debts_new (
+                        id, name, personName, debtType, totalAmount, amountPaid, remainingAmount,
+                        reservedAmount, dueDate, nextDueDate, startDate, endDate, paymentFrequency,
+                        customIntervalDays, installmentAmount, isRecurring, status, notes, createdAt,
+                        updatedAt, isActive, isArchived, completedAt, priority, autoReserveEnabled,
+                        reservePercent, fixedReserveAmount, lastPaymentDate, reminderEnabled, reminderTimingDays
+                    )
+                    SELECT
+                        id, name, NULL, 'I_OWE', totalAmount, MAX(totalAmount - remainingAmount, 0), remainingAmount,
+                        0, dueDate, dueDate, NULL, NULL, 'ONE_TIME',
+                        NULL, NULL, 0,
+                        CASE WHEN remainingAmount <= 0 THEN 'PAID' ELSE 'ACTIVE' END,
+                        NULL, 0, 0, isActive, 0, NULL, 0, 1,
+                        NULL, NULL, NULL, 0, NULL
+                    FROM debts
+                    """.trimIndent()
+                )
+                db.execSQL("DROP TABLE debts")
+                db.execSQL("ALTER TABLE debts_new RENAME TO debts")
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS debt_transactions (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        debtId INTEGER NOT NULL,
+                        amount INTEGER NOT NULL,
+                        transactionType TEXT NOT NULL,
+                        sourceTransactionId INTEGER,
+                        date INTEGER NOT NULL,
+                        notes TEXT,
+                        createdAt INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
+
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS subscriptions_new (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        name TEXT NOT NULL,
+                        amount INTEGER NOT NULL,
+                        categoryId INTEGER,
+                        billingCycle TEXT NOT NULL,
+                        customIntervalDays INTEGER,
+                        nextBillingDate INTEGER,
+                        startDate INTEGER,
+                        endDate INTEGER,
+                        reserveEnabled INTEGER NOT NULL,
+                        reservedAmount INTEGER NOT NULL,
+                        importance TEXT NOT NULL,
+                        status TEXT NOT NULL,
+                        notes TEXT,
+                        createdAt INTEGER NOT NULL,
+                        updatedAt INTEGER NOT NULL,
+                        isActive INTEGER NOT NULL,
+                        isArchived INTEGER NOT NULL,
+                        lastPaidDate INTEGER,
+                        completedAt INTEGER,
+                        autoPay INTEGER NOT NULL,
+                        paymentMethod TEXT,
+                        reminderEnabled INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    INSERT INTO subscriptions_new (
+                        id, name, amount, categoryId, billingCycle, customIntervalDays,
+                        nextBillingDate, startDate, endDate, reserveEnabled, reservedAmount,
+                        importance, status, notes, createdAt, updatedAt, isActive, isArchived,
+                        lastPaidDate, completedAt, autoPay, paymentMethod, reminderEnabled
+                    )
+                    SELECT
+                        id, name, amount, NULL,
+                        CASE WHEN billingCycle = '' THEN 'MONTHLY' ELSE billingCycle END,
+                        NULL, nextDueDate, NULL, NULL, reserveEnabled, 0,
+                        'MEDIUM',
+                        CASE WHEN isActive = 1 THEN 'ACTIVE' ELSE 'PAUSED' END,
+                        NULL, 0, 0, isActive, 0, NULL, NULL, 0, NULL, 0
+                    FROM subscriptions
+                    """.trimIndent()
+                )
+                db.execSQL("DROP TABLE subscriptions")
+                db.execSQL("ALTER TABLE subscriptions_new RENAME TO subscriptions")
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS subscription_transactions (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        subscriptionId INTEGER NOT NULL,
+                        amount INTEGER NOT NULL,
+                        transactionType TEXT NOT NULL,
+                        sourceTransactionId INTEGER,
+                        date INTEGER NOT NULL,
+                        notes TEXT,
+                        createdAt INTEGER NOT NULL
                     )
                     """.trimIndent()
                 )

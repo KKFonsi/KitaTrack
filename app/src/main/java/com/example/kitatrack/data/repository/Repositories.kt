@@ -4,11 +4,13 @@ import com.example.kitatrack.data.local.dao.AppSettingsDao
 import com.example.kitatrack.data.local.dao.BudgetDao
 import com.example.kitatrack.data.local.dao.CategoryDao
 import com.example.kitatrack.data.local.dao.DebtDao
+import com.example.kitatrack.data.local.dao.DebtTransactionDao
 import com.example.kitatrack.data.local.dao.MonthlySummaryDao
 import com.example.kitatrack.data.local.dao.PiggyBankDao
 import com.example.kitatrack.data.local.dao.PiggyBankTransactionDao
 import com.example.kitatrack.data.local.dao.PiggyBankMissedContributionDao
 import com.example.kitatrack.data.local.dao.SubscriptionDao
+import com.example.kitatrack.data.local.dao.SubscriptionTransactionDao
 import com.example.kitatrack.data.local.dao.TransactionDao
 import com.example.kitatrack.data.local.entity.CategoryEntity
 import com.example.kitatrack.data.local.entity.TransactionEntity
@@ -16,10 +18,17 @@ import com.example.kitatrack.data.local.entity.BudgetEntity
 import com.example.kitatrack.data.local.entity.PiggyBankEntity
 import com.example.kitatrack.data.local.entity.PiggyBankTransactionEntity
 import com.example.kitatrack.data.local.entity.PiggyBankMissedContributionEntity
+import com.example.kitatrack.data.local.entity.DebtEntity
+import com.example.kitatrack.data.local.entity.DebtTransactionEntity
+import com.example.kitatrack.data.local.entity.SubscriptionEntity
+import com.example.kitatrack.data.local.entity.SubscriptionTransactionEntity
 import com.example.kitatrack.data.local.model.BudgetProgress
+import com.example.kitatrack.data.local.model.DebtProgress
 import com.example.kitatrack.data.local.model.PiggyBankAllocationPlan
+import com.example.kitatrack.data.local.model.SubscriptionProgress
 import com.example.kitatrack.util.DateRanges
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 
 class TransactionRepository(private val dao: TransactionDao) {
     fun getAllTransactions() = dao.getAllWithCategory()
@@ -484,7 +493,431 @@ class PiggyBankRepository(
         const val ADJUST_SKIP = "SKIP_CONTRIBUTION"
     }
 }
-class DebtRepository(private val dao: DebtDao)
-class SubscriptionRepository(private val dao: SubscriptionDao)
+class DebtRepository(
+    private val dao: DebtDao,
+    private val transactionDao: DebtTransactionDao,
+    private val appTransactionDao: TransactionDao,
+    private val categoryDao: CategoryDao
+) {
+    fun getAllDebts() = dao.getAll()
+    fun getActiveDebts() = dao.getActive()
+    fun getDebtProgress() = dao.getAll().map { debts ->
+            val today = System.currentTimeMillis()
+            debts.map { debt ->
+                val due = debt.nextDueDate ?: debt.dueDate
+                val overdue = debt.isActive && debt.status != STATUS_PAID && debt.remainingAmount > 0 && due != null && due < today
+                val upcoming = debt.isActive && !overdue && due != null && due - today <= java.util.concurrent.TimeUnit.DAYS.toMillis(7)
+                DebtProgress(
+                    debt = debt.copy(status = if (overdue) STATUS_OVERDUE else debt.status),
+                    progressPercent = if (debt.totalAmount <= 0) 0 else ((debt.amountPaid * 100) / debt.totalAmount).toInt(),
+                    reservePercent = if (debt.remainingAmount <= 0) 0 else ((debt.reservedAmount * 100) / debt.remainingAmount).toInt().coerceAtMost(100),
+                    isOverdue = overdue,
+                    isUpcoming = upcoming,
+                    statusLabel = when {
+                        debt.isArchived -> "Archived"
+                        debt.remainingAmount <= 0 -> "Paid"
+                        overdue -> "Overdue"
+                        debt.amountPaid > 0 -> "Partially paid"
+                        upcoming -> "Upcoming"
+                        else -> "Active"
+                    },
+                    dueLabel = due?.let { com.example.kitatrack.util.Formatters.date(it) } ?: "No due date"
+                )
+            }
+    }
+
+    suspend fun saveDebt(
+        existingId: Long?,
+        name: String,
+        personName: String?,
+        debtType: String,
+        totalAmount: Long,
+        amountPaid: Long,
+        installmentAmount: Long?,
+        paymentFrequency: String,
+        customIntervalDays: Int?,
+        nextDueDate: Long?,
+        endDate: Long?,
+        priority: Int,
+        autoReserveEnabled: Boolean,
+        reminderEnabled: Boolean,
+        reminderTimingDays: Int?,
+        notes: String?,
+        isActive: Boolean
+    ): Result<Unit> {
+        val clean = name.trim()
+        if (clean.isBlank()) return Result.failure(IllegalArgumentException("Debt name is required."))
+        if (debtType !in DEBT_TYPES) return Result.failure(IllegalArgumentException("Select a valid debt type."))
+        if (totalAmount <= 0) return Result.failure(IllegalArgumentException("Total amount must be greater than 0."))
+        if (amountPaid < 0 || amountPaid > totalAmount) return Result.failure(IllegalArgumentException("Amount paid must be between 0 and total amount."))
+        if (paymentFrequency !in FREQUENCIES) return Result.failure(IllegalArgumentException("Select a valid payment frequency."))
+        if (paymentFrequency in setOf(FREQ_EVERY_X_DAYS, FREQ_CUSTOM) && (customIntervalDays == null || customIntervalDays <= 0)) {
+            return Result.failure(IllegalArgumentException("Custom interval days must be greater than 0."))
+        }
+        val now = System.currentTimeMillis()
+        val old = existingId?.let { dao.getById(it) }
+        val remaining = (totalAmount - amountPaid).coerceAtLeast(0)
+        val status = when {
+            remaining <= 0 -> STATUS_PAID
+            amountPaid > 0 -> STATUS_PARTIALLY_PAID
+            else -> STATUS_ACTIVE
+        }
+        val entity = DebtEntity(
+            id = old?.id ?: 0,
+            name = clean,
+            personName = personName?.trim()?.ifBlank { null },
+            debtType = debtType,
+            totalAmount = totalAmount,
+            amountPaid = amountPaid,
+            remainingAmount = remaining,
+            reservedAmount = old?.reservedAmount?.coerceAtMost(remaining) ?: 0,
+            dueDate = nextDueDate,
+            nextDueDate = nextDueDate,
+            startDate = old?.startDate ?: now,
+            endDate = endDate,
+            paymentFrequency = paymentFrequency,
+            customIntervalDays = customIntervalDays,
+            installmentAmount = installmentAmount,
+            isRecurring = paymentFrequency != FREQ_ONE_TIME,
+            status = status,
+            notes = notes?.trim()?.ifBlank { null },
+            createdAt = old?.createdAt ?: now,
+            updatedAt = now,
+            isActive = isActive && status != STATUS_PAID,
+            isArchived = old?.isArchived ?: false,
+            completedAt = if (status == STATUS_PAID) now else old?.completedAt,
+            priority = priority,
+            autoReserveEnabled = debtType == TYPE_I_OWE && autoReserveEnabled,
+            reminderEnabled = reminderEnabled,
+            reminderTimingDays = reminderTimingDays
+        )
+        if (old == null) dao.insert(entity) else dao.update(entity)
+        return Result.success(Unit)
+    }
+
+    suspend fun allocateFromIncome(incomeTransactionId: Long, incomeAmount: Long, date: Long): Long {
+        var remainingIncome = incomeAmount
+        var allocated = 0L
+        val debts = dao.getAllForExport()
+            .filter { it.isActive && !it.isArchived && it.debtType == TYPE_I_OWE && it.autoReserveEnabled && it.remainingAmount > 0 }
+            .sortedWith(compareBy<DebtEntity> { (it.nextDueDate ?: it.dueDate) ?: Long.MAX_VALUE }.thenByDescending { it.priority }.thenBy { it.createdAt })
+        debts.forEach { debt ->
+            if (remainingIncome <= 0) return@forEach
+            val needed = reserveNeeded(debt)
+            val amount = minOf(needed, remainingIncome)
+            if (amount > 0) {
+                dao.update(debt.copy(reservedAmount = debt.reservedAmount + amount, updatedAt = System.currentTimeMillis()))
+                transactionDao.insert(DebtTransactionEntity(debtId = debt.id, amount = amount, transactionType = TX_RESERVE_ALLOCATION, sourceTransactionId = incomeTransactionId, date = date, createdAt = System.currentTimeMillis()))
+                allocated += amount
+                remainingIncome -= amount
+            }
+        }
+        return allocated
+    }
+
+    private fun reserveNeeded(debt: DebtEntity): Long {
+        val remainingReserveNeeded = (debt.remainingAmount - debt.reservedAmount).coerceAtLeast(0)
+        val cycleNeed = debt.installmentAmount?.let { (it - debt.reservedAmount).coerceAtLeast(0) } ?: remainingReserveNeeded
+        return minOf(remainingReserveNeeded, cycleNeed)
+    }
+
+    suspend fun recordPayment(id: Long, amount: Long, fromReserve: Boolean): Result<Unit> {
+        val debt = dao.getById(id) ?: return Result.failure(IllegalArgumentException("Debt not found."))
+        if (amount <= 0) return Result.failure(IllegalArgumentException("Payment amount must be greater than 0."))
+        if (amount > debt.remainingAmount) return Result.failure(IllegalArgumentException("Payment cannot exceed remaining balance."))
+        if (debt.debtType == TYPE_I_OWE && fromReserve && amount > debt.reservedAmount) return Result.failure(IllegalArgumentException("Debt Reserve is not enough for this payment."))
+        val now = System.currentTimeMillis()
+        var txId: Long? = null
+        if (debt.debtType == TYPE_I_OWE && !fromReserve) {
+            val categoryId = categoryDao.getByNameAndType("Debt / Loans", CategoryRepository.TYPE_EXPENSE)?.id
+            txId = appTransactionDao.insert(TransactionEntity(amount = amount, type = "EXPENSE", categoryId = categoryId, description = "Debt payment: ${debt.name}", occurredAt = now, createdAt = now, updatedAt = now))
+        } else if (debt.debtType == TYPE_OWED_TO_ME) {
+            val categoryId = categoryDao.getByNameAndType("Debt repayment", CategoryRepository.TYPE_INCOME_SOURCE)?.id
+                ?: categoryDao.getByNameAndType("Other", CategoryRepository.TYPE_INCOME_SOURCE)?.id
+            txId = appTransactionDao.insert(TransactionEntity(amount = amount, type = "INCOME", categoryId = categoryId, description = "", occurredAt = now, createdAt = now, updatedAt = now))
+        }
+        val paid = debt.amountPaid + amount
+        val remaining = (debt.totalAmount - paid).coerceAtLeast(0)
+        val nextStatus = when {
+            remaining <= 0 -> STATUS_PAID
+            paid > 0 -> STATUS_PARTIALLY_PAID
+            else -> STATUS_ACTIVE
+        }
+        dao.update(
+            debt.copy(
+                amountPaid = paid,
+                remainingAmount = remaining,
+                reservedAmount = if (debt.debtType == TYPE_I_OWE && fromReserve) (debt.reservedAmount - amount).coerceAtLeast(0) else debt.reservedAmount,
+                nextDueDate = if (remaining > 0 && debt.isRecurring) nextDueDate(debt) else debt.nextDueDate,
+                status = nextStatus,
+                isActive = remaining > 0,
+                completedAt = if (remaining <= 0) now else debt.completedAt,
+                lastPaymentDate = now,
+                updatedAt = now
+            )
+        )
+        transactionDao.insert(DebtTransactionEntity(debtId = id, amount = amount, transactionType = if (debt.debtType == TYPE_OWED_TO_ME) TX_PAYMENT_RECEIVED else TX_PAYMENT_MADE, sourceTransactionId = txId, date = now, createdAt = now, notes = if (fromReserve) "Paid using Debt Reserve" else "Paid using Main Balance"))
+        return Result.success(Unit)
+    }
+
+    suspend fun adjustReserve(id: Long, amount: Long, add: Boolean): Result<Unit> {
+        val debt = dao.getById(id) ?: return Result.failure(IllegalArgumentException("Debt not found."))
+        if (debt.debtType != TYPE_I_OWE) return Result.failure(IllegalArgumentException("Only debts you owe can have a reserve."))
+        if (amount <= 0) return Result.failure(IllegalArgumentException("Amount must be greater than 0."))
+        val next = if (add) debt.reservedAmount + amount else debt.reservedAmount - amount
+        if (next < 0) return Result.failure(IllegalArgumentException("Debt Reserve cannot go below 0."))
+        if (next > debt.remainingAmount) return Result.failure(IllegalArgumentException("Debt Reserve cannot exceed remaining balance."))
+        dao.update(debt.copy(reservedAmount = next, updatedAt = System.currentTimeMillis()))
+        transactionDao.insert(DebtTransactionEntity(debtId = id, amount = amount, transactionType = if (add) TX_MANUAL_RESERVE_ADD else TX_MANUAL_RESERVE_REMOVE, date = System.currentTimeMillis(), createdAt = System.currentTimeMillis()))
+        return Result.success(Unit)
+    }
+
+    suspend fun archive(id: Long) {
+        dao.getById(id)?.let { dao.update(it.copy(isActive = false, isArchived = true, status = STATUS_ARCHIVED, updatedAt = System.currentTimeMillis())) }
+    }
+
+    private fun nextDueDate(debt: DebtEntity): Long? {
+        val base = debt.nextDueDate ?: debt.dueDate ?: return null
+        val cal = java.util.Calendar.getInstance().apply { timeInMillis = base }
+        when (debt.paymentFrequency) {
+            FREQ_DAILY -> cal.add(java.util.Calendar.DAY_OF_MONTH, 1)
+            FREQ_WEEKLY -> cal.add(java.util.Calendar.WEEK_OF_YEAR, 1)
+            FREQ_BI_WEEKLY -> cal.add(java.util.Calendar.WEEK_OF_YEAR, 2)
+            FREQ_MONTHLY -> cal.add(java.util.Calendar.MONTH, 1)
+            FREQ_EVERY_X_DAYS, FREQ_CUSTOM -> cal.add(java.util.Calendar.DAY_OF_MONTH, debt.customIntervalDays ?: 1)
+            else -> return debt.nextDueDate
+        }
+        return cal.timeInMillis
+    }
+
+    companion object {
+        const val TYPE_I_OWE = "I_OWE"
+        const val TYPE_OWED_TO_ME = "OWED_TO_ME"
+        val DEBT_TYPES = setOf(TYPE_I_OWE, TYPE_OWED_TO_ME)
+        const val FREQ_ONE_TIME = "ONE_TIME"
+        const val FREQ_DAILY = "DAILY"
+        const val FREQ_WEEKLY = "WEEKLY"
+        const val FREQ_BI_WEEKLY = "BI_WEEKLY"
+        const val FREQ_MONTHLY = "MONTHLY"
+        const val FREQ_EVERY_X_DAYS = "EVERY_X_DAYS"
+        const val FREQ_CUSTOM = "CUSTOM"
+        val FREQUENCIES = setOf(FREQ_ONE_TIME, FREQ_DAILY, FREQ_WEEKLY, FREQ_BI_WEEKLY, FREQ_MONTHLY, FREQ_EVERY_X_DAYS, FREQ_CUSTOM)
+        const val STATUS_ACTIVE = "ACTIVE"
+        const val STATUS_PARTIALLY_PAID = "PARTIALLY_PAID"
+        const val STATUS_PAID = "PAID"
+        const val STATUS_OVERDUE = "OVERDUE"
+        const val STATUS_ARCHIVED = "ARCHIVED"
+        const val TX_RESERVE_ALLOCATION = "RESERVE_ALLOCATION"
+        const val TX_PAYMENT_MADE = "PAYMENT_MADE"
+        const val TX_PAYMENT_RECEIVED = "PAYMENT_RECEIVED"
+        const val TX_MANUAL_RESERVE_ADD = "MANUAL_RESERVE_ADD"
+        const val TX_MANUAL_RESERVE_REMOVE = "MANUAL_RESERVE_REMOVE"
+    }
+}
+class SubscriptionRepository(
+    private val dao: SubscriptionDao,
+    private val transactionDao: SubscriptionTransactionDao,
+    private val appTransactionDao: TransactionDao,
+    private val categoryDao: CategoryDao
+) {
+    fun getAllSubscriptions() = dao.getAll()
+    fun getActiveSubscriptions() = dao.getActive()
+    fun getSubscriptionProgress() = dao.getAll().map { subscriptions ->
+        val now = System.currentTimeMillis()
+        subscriptions.map { sub ->
+            val due = sub.nextBillingDate
+            val overdue = sub.isActive && !sub.isArchived && sub.status !in setOf(STATUS_CANCELLED, STATUS_PAUSED, STATUS_ARCHIVED) && due != null && due < now
+            val upcoming = sub.isActive && !sub.isArchived && !overdue && due != null && due - now <= java.util.concurrent.TimeUnit.DAYS.toMillis(7)
+            val funded = sub.reserveEnabled && sub.reservedAmount >= sub.amount
+            SubscriptionProgress(
+                subscription = sub.copy(status = if (overdue) STATUS_OVERDUE else if (upcoming) STATUS_UPCOMING else sub.status),
+                reservePercent = if (sub.amount <= 0) 0 else ((sub.reservedAmount * 100) / sub.amount).toInt().coerceAtMost(100),
+                isOverdue = overdue,
+                isUpcoming = upcoming,
+                isFunded = funded,
+                statusLabel = when {
+                    sub.isArchived -> "Archived"
+                    sub.status == STATUS_CANCELLED -> "Cancelled"
+                    sub.status == STATUS_PAUSED -> "Paused"
+                    overdue -> "Overdue"
+                    funded -> "Funded"
+                    upcoming -> "Upcoming"
+                    else -> "Active"
+                },
+                dueLabel = due?.let { com.example.kitatrack.util.Formatters.date(it) } ?: "No billing date",
+                cycleLabel = cycleLabel(sub.billingCycle, sub.customIntervalDays)
+            )
+        }
+    }
+
+    suspend fun saveSubscription(
+        existingId: Long?,
+        name: String,
+        amount: Long,
+        categoryId: Long?,
+        billingCycle: String,
+        customIntervalDays: Int?,
+        nextBillingDate: Long?,
+        importance: String,
+        reserveEnabled: Boolean,
+        reminderEnabled: Boolean,
+        notes: String?,
+        isActive: Boolean
+    ): Result<Unit> {
+        val clean = name.trim()
+        if (clean.isBlank()) return Result.failure(IllegalArgumentException("Subscription name is required."))
+        if (amount <= 0) return Result.failure(IllegalArgumentException("Amount must be greater than 0."))
+        if (billingCycle !in BILLING_CYCLES) return Result.failure(IllegalArgumentException("Select a valid billing cycle."))
+        if (billingCycle in setOf(CYCLE_EVERY_X_DAYS, CYCLE_CUSTOM) && (customIntervalDays == null || customIntervalDays <= 0)) {
+            return Result.failure(IllegalArgumentException("Custom interval days must be greater than 0."))
+        }
+        if (nextBillingDate == null) return Result.failure(IllegalArgumentException("Select the next billing date."))
+        if (importance !in IMPORTANCE_LEVELS) return Result.failure(IllegalArgumentException("Select a valid importance."))
+        val now = System.currentTimeMillis()
+        val old = existingId?.let { dao.getById(it) }
+        val entity = SubscriptionEntity(
+            id = old?.id ?: 0,
+            name = clean,
+            amount = amount,
+            categoryId = categoryId,
+            billingCycle = billingCycle,
+            customIntervalDays = customIntervalDays,
+            nextBillingDate = nextBillingDate,
+            startDate = old?.startDate ?: now,
+            reserveEnabled = reserveEnabled,
+            reservedAmount = old?.reservedAmount?.coerceAtMost(amount) ?: 0,
+            importance = importance,
+            status = if (isActive) STATUS_ACTIVE else STATUS_PAUSED,
+            notes = notes?.trim()?.ifBlank { null },
+            createdAt = old?.createdAt ?: now,
+            updatedAt = now,
+            isActive = isActive,
+            isArchived = old?.isArchived ?: false,
+            lastPaidDate = old?.lastPaidDate,
+            completedAt = old?.completedAt,
+            reminderEnabled = reminderEnabled
+        )
+        if (old == null) dao.insert(entity) else dao.update(entity)
+        return Result.success(Unit)
+    }
+
+    suspend fun allocateFromIncome(sourceTransactionId: Long, incomeAmount: Long, date: Long): Long {
+        var remainingIncome = incomeAmount
+        var allocated = 0L
+        val now = System.currentTimeMillis()
+        val subscriptions = dao.getAllForExport()
+            .filter { it.isActive && !it.isArchived && it.reserveEnabled && it.status !in setOf(STATUS_PAUSED, STATUS_CANCELLED, STATUS_ARCHIVED) && it.amount > 0 }
+            .sortedWith(
+                compareByDescending<SubscriptionEntity> { ((it.nextBillingDate ?: Long.MAX_VALUE) < now) }
+                    .thenBy { it.nextBillingDate ?: Long.MAX_VALUE }
+                    .thenByDescending { importanceRank(it.importance) }
+                    .thenBy { it.createdAt }
+            )
+        subscriptions.forEach { sub ->
+            if (remainingIncome <= 0) return@forEach
+            val needed = (sub.amount - sub.reservedAmount).coerceAtLeast(0)
+            val amount = minOf(needed, remainingIncome)
+            if (amount > 0) {
+                dao.update(sub.copy(reservedAmount = sub.reservedAmount + amount, updatedAt = System.currentTimeMillis()))
+                transactionDao.insert(SubscriptionTransactionEntity(subscriptionId = sub.id, amount = amount, transactionType = TX_RESERVE_ALLOCATION, sourceTransactionId = sourceTransactionId, date = date, createdAt = System.currentTimeMillis()))
+                allocated += amount
+                remainingIncome -= amount
+            }
+        }
+        return allocated
+    }
+
+    suspend fun recordPayment(id: Long, amount: Long, fromReserve: Boolean): Result<Unit> {
+        val sub = dao.getById(id) ?: return Result.failure(IllegalArgumentException("Subscription not found."))
+        if (amount <= 0) return Result.failure(IllegalArgumentException("Payment amount must be greater than 0."))
+        if (fromReserve && amount > sub.reservedAmount) return Result.failure(IllegalArgumentException("Subscription Reserve is not enough for this payment."))
+        val now = System.currentTimeMillis()
+        var txId: Long? = null
+        if (!fromReserve) {
+            val categoryId = sub.categoryId ?: categoryDao.getByNameAndType("Subscriptions", CategoryRepository.TYPE_EXPENSE)?.id
+            txId = appTransactionDao.insert(TransactionEntity(amount = amount, type = "EXPENSE", categoryId = categoryId, description = "Subscription payment: ${sub.name}", occurredAt = now, createdAt = now, updatedAt = now))
+        }
+        val nextDate = nextBillingDate(sub)
+        dao.update(
+            sub.copy(
+                reservedAmount = if (fromReserve) (sub.reservedAmount - amount).coerceAtLeast(0) else sub.reservedAmount,
+                nextBillingDate = nextDate,
+                lastPaidDate = now,
+                status = STATUS_ACTIVE,
+                updatedAt = now
+            )
+        )
+        transactionDao.insert(SubscriptionTransactionEntity(subscriptionId = id, amount = amount, transactionType = TX_PAYMENT_MADE, sourceTransactionId = txId, date = now, createdAt = now, notes = if (fromReserve) "Paid using Subscription Reserve" else "Paid using Main Balance"))
+        return Result.success(Unit)
+    }
+
+    suspend fun adjustReserve(id: Long, amount: Long, add: Boolean): Result<Unit> {
+        val sub = dao.getById(id) ?: return Result.failure(IllegalArgumentException("Subscription not found."))
+        if (!sub.reserveEnabled) return Result.failure(IllegalArgumentException("Reserve is disabled for this subscription."))
+        if (amount <= 0) return Result.failure(IllegalArgumentException("Amount must be greater than 0."))
+        val next = if (add) sub.reservedAmount + amount else sub.reservedAmount - amount
+        if (next < 0) return Result.failure(IllegalArgumentException("Subscription Reserve cannot go below 0."))
+        if (next > sub.amount) return Result.failure(IllegalArgumentException("Subscription Reserve cannot exceed the current billing amount."))
+        dao.update(sub.copy(reservedAmount = next, updatedAt = System.currentTimeMillis()))
+        transactionDao.insert(SubscriptionTransactionEntity(subscriptionId = id, amount = amount, transactionType = if (add) TX_MANUAL_RESERVE_ADD else TX_MANUAL_RESERVE_REMOVE, date = System.currentTimeMillis(), createdAt = System.currentTimeMillis()))
+        return Result.success(Unit)
+    }
+
+    suspend fun archive(id: Long) {
+        dao.getById(id)?.let { dao.update(it.copy(isActive = false, isArchived = true, status = STATUS_ARCHIVED, updatedAt = System.currentTimeMillis())) }
+    }
+
+    private fun nextBillingDate(sub: SubscriptionEntity): Long? {
+        val base = sub.nextBillingDate ?: return null
+        val cal = java.util.Calendar.getInstance().apply { timeInMillis = base }
+        when (sub.billingCycle) {
+            CYCLE_WEEKLY -> cal.add(java.util.Calendar.WEEK_OF_YEAR, 1)
+            CYCLE_MONTHLY -> cal.add(java.util.Calendar.MONTH, 1)
+            CYCLE_YEARLY -> cal.add(java.util.Calendar.YEAR, 1)
+            CYCLE_EVERY_X_DAYS, CYCLE_CUSTOM -> cal.add(java.util.Calendar.DAY_OF_MONTH, sub.customIntervalDays ?: 1)
+            else -> cal.add(java.util.Calendar.MONTH, 1)
+        }
+        return cal.timeInMillis
+    }
+
+    companion object {
+        const val CYCLE_WEEKLY = "WEEKLY"
+        const val CYCLE_MONTHLY = "MONTHLY"
+        const val CYCLE_YEARLY = "YEARLY"
+        const val CYCLE_EVERY_X_DAYS = "EVERY_X_DAYS"
+        const val CYCLE_CUSTOM = "CUSTOM"
+        val BILLING_CYCLES = setOf(CYCLE_WEEKLY, CYCLE_MONTHLY, CYCLE_YEARLY, CYCLE_EVERY_X_DAYS, CYCLE_CUSTOM)
+        const val IMPORTANCE_LOW = "LOW"
+        const val IMPORTANCE_MEDIUM = "MEDIUM"
+        const val IMPORTANCE_HIGH = "HIGH"
+        const val IMPORTANCE_ESSENTIAL = "ESSENTIAL"
+        val IMPORTANCE_LEVELS = setOf(IMPORTANCE_LOW, IMPORTANCE_MEDIUM, IMPORTANCE_HIGH, IMPORTANCE_ESSENTIAL)
+        const val STATUS_ACTIVE = "ACTIVE"
+        const val STATUS_PAID_CURRENT = "PAID_CURRENT"
+        const val STATUS_UPCOMING = "UPCOMING"
+        const val STATUS_OVERDUE = "OVERDUE"
+        const val STATUS_PAUSED = "PAUSED"
+        const val STATUS_CANCELLED = "CANCELLED"
+        const val STATUS_ARCHIVED = "ARCHIVED"
+        const val TX_RESERVE_ALLOCATION = "RESERVE_ALLOCATION"
+        const val TX_PAYMENT_MADE = "PAYMENT_MADE"
+        const val TX_MANUAL_RESERVE_ADD = "MANUAL_RESERVE_ADD"
+        const val TX_MANUAL_RESERVE_REMOVE = "MANUAL_RESERVE_REMOVE"
+        private fun importanceRank(value: String) = when (value) {
+            IMPORTANCE_ESSENTIAL -> 4
+            IMPORTANCE_HIGH -> 3
+            IMPORTANCE_MEDIUM -> 2
+            else -> 1
+        }
+        fun cycleLabel(cycle: String, customDays: Int? = null) = when (cycle) {
+            CYCLE_WEEKLY -> "Weekly"
+            CYCLE_MONTHLY -> "Monthly"
+            CYCLE_YEARLY -> "Yearly"
+            CYCLE_EVERY_X_DAYS -> "Every ${customDays ?: "X"} days"
+            CYCLE_CUSTOM -> "Custom"
+            else -> cycle
+        }
+    }
+}
 class MonthlySummaryRepository(private val dao: MonthlySummaryDao)
 class AppSettingsRepository(private val dao: AppSettingsDao)
