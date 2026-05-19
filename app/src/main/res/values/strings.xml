@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">KitaTrack</string>
+    <string name="widget_description">Quickly view safe-to-spend money and add income or expenses.</string>
 </resources>

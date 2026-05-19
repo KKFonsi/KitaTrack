@@ -10,9 +10,11 @@ import com.example.kitatrack.data.local.dao.CategoryDao
 import com.example.kitatrack.data.local.dao.DebtDao
 import com.example.kitatrack.data.local.dao.DebtTransactionDao
 import com.example.kitatrack.data.local.dao.MonthlySummaryDao
+import com.example.kitatrack.data.local.dao.MonthlyAiSummaryDao
 import com.example.kitatrack.data.local.dao.PiggyBankDao
 import com.example.kitatrack.data.local.dao.PiggyBankTransactionDao
 import com.example.kitatrack.data.local.dao.PiggyBankMissedContributionDao
+import com.example.kitatrack.data.local.dao.ReminderDao
 import com.example.kitatrack.data.local.dao.SubscriptionDao
 import com.example.kitatrack.data.local.dao.SubscriptionTransactionDao
 import com.example.kitatrack.data.local.dao.TransactionDao
@@ -22,12 +24,14 @@ import com.example.kitatrack.data.local.entity.CategoryEntity
 import com.example.kitatrack.data.local.entity.DebtEntity
 import com.example.kitatrack.data.local.entity.DebtTransactionEntity
 import com.example.kitatrack.data.local.entity.MonthlySummaryEntity
+import com.example.kitatrack.data.local.entity.MonthlyAiSummaryEntity
 import com.example.kitatrack.data.local.entity.PiggyBankEntity
 import com.example.kitatrack.data.local.entity.PiggyBankTransactionEntity
 import com.example.kitatrack.data.local.entity.PiggyBankMissedContributionEntity
 import com.example.kitatrack.data.local.entity.SubscriptionEntity
 import com.example.kitatrack.data.local.entity.SubscriptionTransactionEntity
 import com.example.kitatrack.data.local.entity.TransactionEntity
+import com.example.kitatrack.data.local.entity.ReminderEntity
 
 @Database(
     entities = [
@@ -42,9 +46,11 @@ import com.example.kitatrack.data.local.entity.TransactionEntity
         SubscriptionEntity::class,
         SubscriptionTransactionEntity::class,
         MonthlySummaryEntity::class,
-        AppSettingsEntity::class
+        MonthlyAiSummaryEntity::class,
+        AppSettingsEntity::class,
+        ReminderEntity::class
     ],
-    version = 9,
+    version = 11,
     exportSchema = true
 )
 abstract class KitaTrackDatabase : RoomDatabase() {
@@ -59,7 +65,9 @@ abstract class KitaTrackDatabase : RoomDatabase() {
     abstract fun subscriptionDao(): SubscriptionDao
     abstract fun subscriptionTransactionDao(): SubscriptionTransactionDao
     abstract fun monthlySummaryDao(): MonthlySummaryDao
+    abstract fun monthlyAiSummaryDao(): MonthlyAiSummaryDao
     abstract fun appSettingsDao(): AppSettingsDao
+    abstract fun reminderDao(): ReminderDao
 
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -359,5 +367,75 @@ abstract class KitaTrackDatabase : RoomDatabase() {
                 )
             }
         }
+
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE app_settings ADD COLUMN debtRemindersEnabled INTEGER NOT NULL DEFAULT 1")
+                db.execSQL("ALTER TABLE app_settings ADD COLUMN subscriptionRemindersEnabled INTEGER NOT NULL DEFAULT 1")
+                db.execSQL("ALTER TABLE app_settings ADD COLUMN budgetAlertsEnabled INTEGER NOT NULL DEFAULT 1")
+                db.execSQL("ALTER TABLE app_settings ADD COLUMN piggyBankRemindersEnabled INTEGER NOT NULL DEFAULT 1")
+                db.execSQL("ALTER TABLE app_settings ADD COLUMN missedContributionRemindersEnabled INTEGER NOT NULL DEFAULT 1")
+                db.execSQL("ALTER TABLE app_settings ADD COLUMN defaultReminderTiming TEXT NOT NULL DEFAULT 'ONE_DAY_BEFORE'")
+                db.execSQL("ALTER TABLE app_settings ADD COLUMN defaultCustomOffsetMinutes INTEGER")
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS reminders (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        reminderType TEXT NOT NULL,
+                        linkedEntityId INTEGER,
+                        linkedEntityType TEXT,
+                        title TEXT NOT NULL,
+                        message TEXT NOT NULL,
+                        scheduledAt INTEGER NOT NULL,
+                        triggerAt INTEGER NOT NULL,
+                        reminderTiming TEXT NOT NULL,
+                        customOffsetMinutes INTEGER,
+                        isEnabled INTEGER NOT NULL,
+                        status TEXT NOT NULL,
+                        createdAt INTEGER NOT NULL,
+                        updatedAt INTEGER NOT NULL,
+                        sentAt INTEGER
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
+
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                if (!db.hasColumn("app_settings", "aiSummaryEnabled")) {
+                    db.execSQL("ALTER TABLE app_settings ADD COLUMN aiSummaryEnabled INTEGER NOT NULL DEFAULT 0")
+                }
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS monthly_ai_summaries (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        year INTEGER NOT NULL,
+                        month INTEGER NOT NULL,
+                        summaryText TEXT NOT NULL,
+                        generatedAt INTEGER NOT NULL,
+                        inputDataHash TEXT,
+                        modelName TEXT,
+                        promptVersion TEXT NOT NULL,
+                        status TEXT NOT NULL,
+                        errorMessage TEXT,
+                        createdAt INTEGER NOT NULL,
+                        updatedAt INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_monthly_ai_summaries_year_month ON monthly_ai_summaries(year, month)")
+            }
+        }
     }
+}
+
+private fun SupportSQLiteDatabase.hasColumn(tableName: String, columnName: String): Boolean {
+    query("PRAGMA table_info($tableName)").use { cursor ->
+        val nameIndex = cursor.getColumnIndex("name")
+        while (cursor.moveToNext()) {
+            if (cursor.getString(nameIndex) == columnName) return true
+        }
+    }
+    return false
 }

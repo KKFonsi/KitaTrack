@@ -11,20 +11,26 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import com.example.kitatrack.KitaTrackApplication
 import com.example.kitatrack.R
+import com.example.kitatrack.data.local.entity.MonthlyAiSummaryEntity
 import com.example.kitatrack.data.local.model.DailyExpenseSummary
 import com.example.kitatrack.data.local.model.MonthlyBalanceSummary
 import com.example.kitatrack.data.local.model.NamedAmount
+import com.example.kitatrack.data.repository.AiMonthAvailability
 import com.example.kitatrack.ui.reports.chart.ChartEntry
 import com.example.kitatrack.ui.reports.chart.ColumnChartView
 import com.example.kitatrack.ui.reports.chart.HorizontalBarChartView
 import com.example.kitatrack.ui.reports.chart.LineChartView
 import com.example.kitatrack.util.Formatters
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.snackbar.Snackbar
+import java.util.Date
 import kotlinx.coroutines.launch
 
 class ReportsFragment : Fragment(R.layout.fragment_reports) {
     private val app by lazy { requireActivity().application as KitaTrackApplication }
-    private val viewModel by viewModels<ReportsViewModel> { ReportsViewModel.Factory(app.transactionRepository) }
+    private val viewModel by viewModels<ReportsViewModel> {
+        ReportsViewModel.Factory(app.transactionRepository, app.monthlyAiSummaryRepository, app.appSettingsRepository)
+    }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -33,6 +39,9 @@ class ReportsFragment : Fragment(R.layout.fragment_reports) {
         view.findViewById<MaterialButton>(R.id.current_month_button).setOnClickListener { viewModel.currentMonth() }
         view.findViewById<MaterialButton>(R.id.monthly_summary_button).setOnClickListener {
             findNavController().navigate(R.id.action_reportsFragment_to_monthlySummaryFragment)
+        }
+        view.findViewById<MaterialButton>(R.id.generate_ai_summary_button).setOnClickListener {
+            viewModel.generateAiSummary()
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
@@ -47,6 +56,11 @@ class ReportsFragment : Fragment(R.layout.fragment_reports) {
                     renderDailyBars(view, state.dailySpending)
                     renderTopCategories(view, state.topCategories, state.expenses)
                     renderMonthlyTrend(view, state.monthlyTrend)
+                    renderAiSummary(view, state)
+                    state.aiError?.let {
+                        Snackbar.make(view, it, Snackbar.LENGTH_LONG).show()
+                        viewModel.clearAiError()
+                    }
                 }
             }
         }
@@ -101,5 +115,61 @@ class ReportsFragment : Fragment(R.layout.fragment_reports) {
             },
             negativeAware = true
         )
+    }
+
+    private fun renderAiSummary(view: View, state: ReportsUiState) {
+        val title = view.findViewById<TextView>(R.id.ai_summary_title)
+        val subtitle = view.findViewById<TextView>(R.id.ai_summary_subtitle)
+        val content = view.findViewById<TextView>(R.id.ai_summary_content)
+        val progress = view.findViewById<android.widget.ProgressBar>(R.id.ai_summary_progress)
+        val button = view.findViewById<MaterialButton>(R.id.generate_ai_summary_button)
+        progress.isVisible = state.isGeneratingAiSummary
+        button.isEnabled = !state.isGeneratingAiSummary
+        when {
+            state.aiSummary?.status == MonthlyAiSummaryEntity.STATUS_GENERATED -> {
+                title.text = "Saved AI Summary"
+                subtitle.text = "Generated on ${Formatters.date(state.aiSummary.generatedAt)}"
+                content.text = state.aiSummary.summaryText
+                button.isVisible = false
+            }
+            !state.aiEnabled -> {
+                title.text = "AI Monthly Summary"
+                subtitle.text = "Optional monthly analysis"
+                content.text = "Enable AI Monthly Analysis in Settings to use this feature. Reports still work normally without it."
+                button.isVisible = false
+            }
+            state.aiAvailability == AiMonthAvailability.CURRENT_MONTH -> {
+                title.text = "AI Monthly Summary"
+                subtitle.text = state.monthLabel
+                content.text = "AI summary will be available after this month ends."
+                button.isVisible = false
+            }
+            state.aiAvailability == AiMonthAvailability.FUTURE_MONTH -> {
+                title.text = "AI Monthly Summary"
+                subtitle.text = state.monthLabel
+                content.text = "No report is available for this month yet."
+                button.isVisible = false
+            }
+            state.income <= 0 && state.expenses <= 0 -> {
+                title.text = "AI Monthly Summary"
+                subtitle.text = state.monthLabel
+                content.text = "No completed month data exists for this report yet."
+                button.isVisible = false
+            }
+            state.isGeneratingAiSummary -> {
+                title.text = "AI Monthly Summary"
+                subtitle.text = "Generating monthly summary…"
+                content.text = "KitaTrack is using summarized monthly numbers only. Raw transaction notes are not included."
+                button.isVisible = true
+                button.text = "Generating…"
+            }
+            else -> {
+                title.text = "AI Monthly Summary"
+                subtitle.text = "Generate a one-time monthly analysis based on summarized data."
+                content.text = "KitaTrack will send summarized monthly numbers to generate this analysis. Raw transaction notes are not included."
+                button.isVisible = true
+                button.text = "Generate AI Summary"
+            }
+        }
     }
 }

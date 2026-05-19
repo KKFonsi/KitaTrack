@@ -2,6 +2,8 @@ package com.example.kitatrack.ui.addtransaction
 
 import android.app.DatePickerDialog
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
@@ -16,6 +18,7 @@ import com.example.kitatrack.data.local.entity.CategoryEntity
 import com.example.kitatrack.util.Formatters
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.button.MaterialButtonToggleGroup
+import com.google.android.material.card.MaterialCardView
 import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
@@ -26,7 +29,7 @@ import kotlinx.coroutines.flow.combine
 class AddTransactionFragment : Fragment(R.layout.fragment_add_transaction) {
     private val app by lazy { requireActivity().application as KitaTrackApplication }
     private val viewModel by viewModels<AddTransactionViewModel> {
-        AddTransactionViewModel.Factory(app.transactionRepository, app.categoryRepository, app.budgetRepository, app.piggyBankRepository, app.debtRepository, app.subscriptionRepository)
+        AddTransactionViewModel.Factory(app.transactionRepository, app.categoryRepository, app.budgetRepository, app.piggyBankRepository, app.incomeAllocationUseCase)
     }
 
     private var categories: List<CategoryEntity> = emptyList()
@@ -58,6 +61,7 @@ class AddTransactionFragment : Fragment(R.layout.fragment_add_transaction) {
         val paymentSourceInput = view.findViewById<AutoCompleteTextView>(R.id.payment_source_input)
         val paymentPiggyLayout = view.findViewById<TextInputLayout>(R.id.payment_piggy_layout)
         val paymentPiggyInput = view.findViewById<AutoCompleteTextView>(R.id.payment_piggy_input)
+        val allocationPreviewCard = view.findViewById<MaterialCardView>(R.id.allocation_preview_card)
         val allocationPreview = view.findViewById<android.widget.TextView>(R.id.allocation_preview)
         val notesInput = view.findViewById<TextInputEditText>(R.id.notes_input)
         val notesLayout = view.findViewById<TextInputLayout>(R.id.notes_layout)
@@ -68,6 +72,8 @@ class AddTransactionFragment : Fragment(R.layout.fragment_add_transaction) {
         dateInput.setText(Formatters.date(selectedDate))
         updateSaveButton(saveButton, defaultType)
         updateFormForType(defaultType, categoryLayout, descriptionLayout, notesLayout, categoryInput, descriptionInput, notesInput)
+        allocationPreviewCard.visibility = if (defaultType == TransactionType.INCOME) View.VISIBLE else View.GONE
+        if (defaultType == TransactionType.INCOME) viewModel.previewAllocation(amountInput.text?.toString().orEmpty())
         paymentSourceInput.setAdapter(ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, listOf("Main Balance", "Piggy Bank")))
         paymentSourceInput.setText("Main Balance", false)
         paymentPiggyLayout.visibility = View.GONE
@@ -84,9 +90,19 @@ class AddTransactionFragment : Fragment(R.layout.fragment_add_transaction) {
                 renderCategories(type, categoryInput)
                 paymentSourceLayout.visibility = if (type == TransactionType.EXPENSE) View.VISIBLE else View.GONE
                 paymentPiggyLayout.visibility = View.GONE
-                allocationPreview.visibility = if (type == TransactionType.INCOME) View.VISIBLE else View.GONE
+                allocationPreviewCard.visibility = if (type == TransactionType.INCOME) View.VISIBLE else View.GONE
+                if (type == TransactionType.INCOME) viewModel.previewAllocation(amountInput.text?.toString().orEmpty())
             }
         }
+        amountInput.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                if (currentType(typeToggle) == TransactionType.INCOME) {
+                    viewModel.previewAllocation(s?.toString().orEmpty())
+                }
+            }
+            override fun afterTextChanged(s: Editable?) = Unit
+        })
         paymentSourceInput.setOnItemClickListener { _, _, position, _ ->
             paymentPiggyLayout.visibility = if (position == 1) View.VISIBLE else View.GONE
             if (position == 0) paymentPiggyBank = null
@@ -158,15 +174,24 @@ class AddTransactionFragment : Fragment(R.layout.fragment_add_transaction) {
                     viewModel.piggyBanks().collect { banks ->
                         paymentPiggyInput.setAdapter(ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, banks.map { it.name }))
                         paymentPiggyInput.setOnItemClickListener { _, _, pos, _ -> paymentPiggyBank = banks[pos] }
-                        val totalPercent = banks.sumOf { it.selectedAllocationPercent }
-                        allocationPreview.text = if (totalPercent > 0) "Debt Reserve is allocated first.\nPiggy Bank Allocation: $totalPercent% of income remaining after debt\nMain Balance: remaining income after reserves" else "Debt Reserve is allocated first. No automatic piggy bank allocation."
+                        if (currentType(typeToggle) == TransactionType.INCOME) {
+                            viewModel.previewAllocation(amountInput.text?.toString().orEmpty())
+                        }
+                    }
+                }
+                launch {
+                    viewModel.allocationPreview.collect { text ->
+                        allocationPreview.text = text
                     }
                 }
                 launch {
                     viewModel.saveResults.collect { result ->
                         when (result) {
                             is SaveTransactionResult.Success -> {
-                                Snackbar.make(view, result.budgetWarning ?: "Transaction saved.", Snackbar.LENGTH_LONG).show()
+                                Snackbar.make(view, result.budgetWarning ?: result.allocationSummary ?: "Transaction saved.", Snackbar.LENGTH_LONG).show()
+                                viewLifecycleOwner.lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                                    app.reminderRepository.rescheduleAll()
+                                }
                                 findNavController().popBackStack()
                             }
                             is SaveTransactionResult.Error -> {

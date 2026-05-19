@@ -125,5 +125,131 @@
                     android:textColor="@color/kitatrack_primary_text" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Reminders &amp; Notifications"
+                    android:textColor="@color/kitatrack_primary_text"
+                    android:textSize="20sp"
+                    android:textStyle="bold" />
+                <TextView
+                    android:id="@+id/notification_permission_value"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="Notification permission status"
+                    android:textColor="@color/kitatrack_secondary_text" />
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/request_notifications_button"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="Allow Notifications"
+                    android:textAllCaps="false" />
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/master_reminders_switch"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="Enable reminders" />
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/debt_reminders_switch"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Debt reminders" />
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/subscription_reminders_switch"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Subscription reminders" />
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/budget_alerts_switch"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Budget alerts" />
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/piggy_reminders_switch"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Piggy bank reminders" />
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/missed_reminders_switch"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Missed contribution reminders" />
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/reminder_timing_layout"
+                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:hint="Default reminder timing">
+                    <AutoCompleteTextView
+                        android:id="@+id/reminder_timing_input"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="none" />
+                </com.google.android.material.textfield.TextInputLayout>
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/refresh_reminders_button"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="Refresh Reminder Schedule"
+                    android:textAllCaps="false" />
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="Reminders are local to this device. No cloud sync or backend notifications are used."
+                    android:textColor="@color/kitatrack_muted_text" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="AI Monthly Analysis"
+                    android:textColor="@color/kitatrack_primary_text"
+                    android:textSize="20sp"
+                    android:textStyle="bold" />
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="AI Monthly Analysis uses summarized monthly data to create a saved report. It does not replace your raw reports."
+                    android:textColor="@color/kitatrack_secondary_text" />
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/ai_monthly_summary_switch"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="Enable AI monthly analysis" />
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="KitaTrack only uses summarized numbers for the saved monthly summary. Raw transaction notes are not included."
+                    android:textColor="@color/kitatrack_muted_text" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
     </LinearLayout>
 </ScrollView>

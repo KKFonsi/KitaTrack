@@ -75,6 +75,10 @@ class DashboardViewModel(repository: TransactionRepository, budgetRepository: Bu
         val warning = active.firstOrNull { it.isOverLimit || it.isNearLimit }?.let {
             if (it.isOverLimit) "${it.name} is over budget by ${Formatters.peso(-it.remainingAmount)}."
             else "You have used ${it.usagePercent}% of ${it.name}."
+        } ?: active.firstOrNull { it.reserveImpactAmount > 0L && it.remainingAmount in 1L..5_000L }?.let {
+            "Your allocations leave only ${Formatters.peso(it.remainingAmount)} for ${it.periodLabel.lowercase()} spending. Debt stays protected; consider lowering piggy bank or optional subscription reserves first."
+        } ?: active.firstOrNull { it.adjustedLimitAmount <= 0L && it.reserveImpactAmount > 0L }?.let {
+            "Your current allocations leave no usable ${it.periodLabel.lowercase()} budget after reserves."
         }
         DashboardUiState(
             mainBalance = amounts.totalIncome - amounts.totalExpenses - debtReserve - piggyTotal - subscriptionReserve,

@@ -9,17 +9,19 @@ import com.example.kitatrack.data.repository.CategoryRepository
 import com.example.kitatrack.data.repository.TransactionRepository
 import com.example.kitatrack.data.repository.BudgetRepository
 import com.example.kitatrack.data.repository.PiggyBankRepository
-import com.example.kitatrack.data.repository.DebtRepository
-import com.example.kitatrack.data.repository.SubscriptionRepository
+import com.example.kitatrack.data.repository.IncomeAllocationUseCase
+import com.example.kitatrack.util.Formatters
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 enum class TransactionType { INCOME, EXPENSE }
 
 sealed interface SaveTransactionResult {
-    data class Success(val budgetWarning: String? = null) : SaveTransactionResult
+    data class Success(val budgetWarning: String? = null, val allocationSummary: String? = null) : SaveTransactionResult
     data class Error(val message: String) : SaveTransactionResult
 }
 
@@ -28,13 +30,27 @@ class AddTransactionViewModel(
     categoryRepository: CategoryRepository,
     private val budgetRepository: BudgetRepository,
     private val piggyBankRepository: PiggyBankRepository,
-    private val debtRepository: DebtRepository,
-    private val subscriptionRepository: SubscriptionRepository
+    private val incomeAllocationUseCase: IncomeAllocationUseCase
 ) : ViewModel() {
     val expenseCategories = categoryRepository.getExpenseCategories()
     val incomeSources = categoryRepository.getIncomeSources()
     private val _saveResults = MutableSharedFlow<SaveTransactionResult>()
     val saveResults = _saveResults.asSharedFlow()
+    private val _allocationPreview = MutableStateFlow("Enter an income amount to preview where the money will go.")
+    val allocationPreview = _allocationPreview.asStateFlow()
+
+    fun previewAllocation(amountText: String) {
+        viewModelScope.launch {
+            val amount = amountText.toBigDecimalOrNull()
+            if (amount == null || amount <= java.math.BigDecimal.ZERO) {
+                _allocationPreview.value = "Enter an income amount to preview where the money will go."
+                return@launch
+            }
+            val amountInCentavos = amount.movePointRight(2).setScale(0, java.math.RoundingMode.HALF_UP).longValueExact()
+            val result = incomeAllocationUseCase.previewIncome(amountInCentavos)
+            _allocationPreview.value = result.toPreviewText()
+        }
+    }
 
     fun save(
         existingId: Long?,
@@ -74,13 +90,17 @@ class AddTransactionViewModel(
                                 updatedAt = now
                             )
                         )
+                        var allocationSummary: String? = null
                         if (type == TransactionType.INCOME) {
-                            val debtAllocated = debtRepository.allocateFromIncome(insertedId, amountInCentavos, occurredAt)
-                            val piggyAllocated = piggyBankRepository.allocateFromIncome(insertedId, amountInCentavos - debtAllocated, occurredAt)
-                            subscriptionRepository.allocateFromIncome(insertedId, amountInCentavos - debtAllocated - piggyAllocated, occurredAt)
+                            allocationSummary = incomeAllocationUseCase
+                                .allocateIncome(insertedId, amountInCentavos, occurredAt)
+                                .toSnackSummary()
                         } else if (piggyBankIdForExpense != null) {
                             piggyBankRepository.deductExpense(piggyBankIdForExpense, amountInCentavos, insertedId)
                         }
+                        val warning = if (type == TransactionType.EXPENSE) currentBudgetWarning() else null
+                        _saveResults.emit(SaveTransactionResult.Success(warning, allocationSummary))
+                        return@launch
                     } else {
                         val existing = transactionRepository.getTransactionOnce(existingId)
                         if (existing == null) {
@@ -112,9 +132,30 @@ class AddTransactionViewModel(
             .filter { it.isActive }
             .firstOrNull { it.isOverLimit || it.isNearLimit }
             ?.let {
-                if (it.isOverLimit) "${it.name} is over budget by ${com.example.kitatrack.util.Formatters.peso(-it.remainingAmount)}."
+                if (it.isOverLimit) "${it.name} is over budget by ${Formatters.peso(-it.remainingAmount)}."
                 else "You have used ${it.usagePercent}% of ${it.name}."
             }
+    }
+
+    private fun com.example.kitatrack.data.local.model.AllocationResult.toSnackSummary(): String? {
+        if (!hasReservedMoney) return null
+        return "Income saved. Debt: ${Formatters.peso(debtAllocatedTotal)} | Piggy: ${Formatters.peso(piggyBankAllocatedTotal)} | Subs: ${Formatters.peso(subscriptionAllocatedTotal)} | Main: ${Formatters.peso(mainBalanceAmount)}"
+    }
+
+    private fun com.example.kitatrack.data.local.model.AllocationResult.toPreviewText(): String {
+        return buildString {
+            append("Allocation Preview\n")
+            append("Income: ${Formatters.peso(originalIncomeAmount)}\n\n")
+            append("Debt Reserve: ${Formatters.peso(debtAllocatedTotal)}\n")
+            append("Piggy Banks: ${Formatters.peso(piggyBankAllocatedTotal)}\n")
+            append("Subscription Reserve: ${Formatters.peso(subscriptionAllocatedTotal)}\n")
+            append("Main Balance: ${Formatters.peso(mainBalanceAmount)}\n\n")
+            append("Total Money Tracked: ${Formatters.peso(originalIncomeAmount)}")
+            if (warnings.isNotEmpty()) {
+                append("\n\n")
+                append(warnings.joinToString("\n"))
+            }
+        }
     }
 
     class Factory(
@@ -122,11 +163,10 @@ class AddTransactionViewModel(
         private val categoryRepository: CategoryRepository,
         private val budgetRepository: BudgetRepository,
         private val piggyBankRepository: PiggyBankRepository,
-        private val debtRepository: DebtRepository,
-        private val subscriptionRepository: SubscriptionRepository
+        private val incomeAllocationUseCase: IncomeAllocationUseCase
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            AddTransactionViewModel(transactionRepository, categoryRepository, budgetRepository, piggyBankRepository, debtRepository, subscriptionRepository) as T
+            AddTransactionViewModel(transactionRepository, categoryRepository, budgetRepository, piggyBankRepository, incomeAllocationUseCase) as T
     }
 }

@@ -33,7 +33,7 @@ class BackupRepository(private val database: KitaTrackDatabase) {
                 put("appName", "KitaTrack")
                 put("backupVersion", BACKUP_VERSION)
                 put("createdAt", isoFormatter.format(Date()))
-                put("databaseVersion", 8)
+                put("databaseVersion", 11)
             })
             put("transactions", JSONArray(database.transactionDao().getAllForExport().map { it.transaction.toJson() }))
             put("categories", JSONArray(database.categoryDao().getAllForExport().map { it.toJson() }))
@@ -46,6 +46,8 @@ class BackupRepository(private val database: KitaTrackDatabase) {
             put("subscriptions", JSONArray(database.subscriptionDao().getAllForExport().map { it.toJson() }))
             put("subscriptionTransactions", JSONArray(database.subscriptionTransactionDao().getAllForExport().map { it.toJson() }))
             put("monthlySummaries", JSONArray(database.monthlySummaryDao().getAllForExport().map { it.toJson() }))
+            put("monthlyAiSummaries", JSONArray(database.monthlyAiSummaryDao().getAllForExport().map { it.toJson() }))
+            put("reminders", JSONArray(database.reminderDao().getAllForExport().map { it.toJson() }))
             put("settings", database.appSettingsDao().getForExport()?.toJson() ?: JSONObject())
         }.toString(2)
     }
@@ -183,10 +185,12 @@ class BackupRepository(private val database: KitaTrackDatabase) {
         val subscriptions = root.optJSONArray("subscriptions")?.toSubscriptionEntities().orEmpty()
         val subscriptionTransactions = root.optJSONArray("subscriptionTransactions")?.toSubscriptionTransactionEntities().orEmpty()
         val monthlySummaries = root.optJSONArray("monthlySummaries")?.toMonthlySummaryEntities().orEmpty()
+        val monthlyAiSummaries = root.optJSONArray("monthlyAiSummaries")?.toMonthlyAiSummaryEntities().orEmpty()
+        val reminders = root.optJSONArray("reminders")?.toReminderEntities().orEmpty()
         val settings = root.optJSONObject("settings")?.takeIf { it.length() > 0 }?.toSettingsEntity()
         when (mode) {
-            RestoreMode.REPLACE -> replaceAll(categories, transactions, budgets, piggyBanks, piggyBankTransactions, piggyBankMissedContributions, debts, debtTransactions, subscriptions, subscriptionTransactions, monthlySummaries, settings)
-            RestoreMode.MERGE_NEWEST_WINS -> mergeNewestWins(categories, transactions, budgets, piggyBanks, piggyBankTransactions, piggyBankMissedContributions, debts, debtTransactions, monthlySummaries, settings)
+            RestoreMode.REPLACE -> replaceAll(categories, transactions, budgets, piggyBanks, piggyBankTransactions, piggyBankMissedContributions, debts, debtTransactions, subscriptions, subscriptionTransactions, monthlySummaries, monthlyAiSummaries, reminders, settings)
+            RestoreMode.MERGE_NEWEST_WINS -> mergeNewestWins(categories, transactions, budgets, piggyBanks, piggyBankTransactions, piggyBankMissedContributions, debts, debtTransactions, subscriptions, subscriptionTransactions, monthlySummaries, monthlyAiSummaries, reminders, settings)
         }
     }
 
@@ -203,6 +207,8 @@ class BackupRepository(private val database: KitaTrackDatabase) {
             database.subscriptionTransactionDao().clearAll()
             database.subscriptionDao().clearAll()
             database.monthlySummaryDao().clearAll()
+            database.monthlyAiSummaryDao().clearAll()
+            database.reminderDao().clearAll()
             database.appSettingsDao().clearAll()
         }
     }
@@ -219,6 +225,8 @@ class BackupRepository(private val database: KitaTrackDatabase) {
         subscriptions: List<SubscriptionEntity>,
         subscriptionTransactions: List<SubscriptionTransactionEntity>,
         monthlySummaries: List<MonthlySummaryEntity>,
+        monthlyAiSummaries: List<MonthlyAiSummaryEntity>,
+        reminders: List<ReminderEntity>,
         settings: AppSettingsEntity?
     ) {
         database.withTransaction {
@@ -233,6 +241,8 @@ class BackupRepository(private val database: KitaTrackDatabase) {
             database.subscriptionTransactionDao().clearAll()
             database.subscriptionDao().clearAll()
             database.monthlySummaryDao().clearAll()
+            database.monthlyAiSummaryDao().clearAll()
+            database.reminderDao().clearAll()
             database.appSettingsDao().clearAll()
             database.categoryDao().replaceAll(categories)
             database.transactionDao().insertAll(transactions)
@@ -245,6 +255,8 @@ class BackupRepository(private val database: KitaTrackDatabase) {
             database.subscriptionDao().insertAll(subscriptions)
             database.subscriptionTransactionDao().insertAll(subscriptionTransactions)
             database.monthlySummaryDao().insertAll(monthlySummaries)
+            database.monthlyAiSummaryDao().insertAll(monthlyAiSummaries)
+            database.reminderDao().insertAll(reminders)
             settings?.let { database.appSettingsDao().insert(it) }
         }
     }
@@ -258,7 +270,11 @@ class BackupRepository(private val database: KitaTrackDatabase) {
         importedPiggyMissedContributions: List<PiggyBankMissedContributionEntity>,
         importedDebts: List<DebtEntity>,
         importedDebtTransactions: List<DebtTransactionEntity>,
+        importedSubscriptions: List<SubscriptionEntity>,
+        importedSubscriptionTransactions: List<SubscriptionTransactionEntity>,
         importedMonthlySummaries: List<MonthlySummaryEntity>,
+        importedMonthlyAiSummaries: List<MonthlyAiSummaryEntity>,
+        importedReminders: List<ReminderEntity>,
         importedSettings: AppSettingsEntity?
     ) {
         database.withTransaction {
@@ -267,7 +283,9 @@ class BackupRepository(private val database: KitaTrackDatabase) {
             val existingBudgets = database.budgetDao().getAllForExport()
             val existingPiggies = database.piggyBankDao().getAllForExport()
             val existingDebts = database.debtDao().getAllForExport()
+            val existingSubscriptions = database.subscriptionDao().getAllForExport()
             val existingSummaries = database.monthlySummaryDao().getAllForExport()
+            val existingAiSummaries = database.monthlyAiSummaryDao().getAllForExport()
             val existingSettings = database.appSettingsDao().getForExport()
 
             val categoryMerge = mergeCategories(existingCategories, importedCategories)
@@ -285,7 +303,9 @@ class BackupRepository(private val database: KitaTrackDatabase) {
             )
             val mergedPiggies = mergeByIdNewest(existingPiggies, importedPiggyBanks, { it.id }, { it.updatedAt })
             val mergedDebts = mergeByIdNewest(existingDebts, importedDebts, { it.id }, { it.updatedAt })
+            val mergedSubscriptions = mergeByIdNewest(existingSubscriptions, importedSubscriptions, { it.id }, { it.updatedAt })
             val mergedSummaries = mergeByIdNewest(existingSummaries, importedMonthlySummaries, { it.monthKey }, { it.updatedAt })
+            val mergedAiSummaries = mergeByIdNewest(existingAiSummaries, importedMonthlyAiSummaries, { "${it.year}-${it.month}" }, { it.updatedAt })
             val mergedSettings = when {
                 importedSettings == null -> existingSettings
                 existingSettings == null -> importedSettings
@@ -300,7 +320,11 @@ class BackupRepository(private val database: KitaTrackDatabase) {
             database.piggyBankMissedContributionDao().clearAll()
             database.debtTransactionDao().clearAll()
             database.debtDao().clearAll()
+            database.subscriptionTransactionDao().clearAll()
+            database.subscriptionDao().clearAll()
             database.monthlySummaryDao().clearAll()
+            database.monthlyAiSummaryDao().clearAll()
+            database.reminderDao().clearAll()
             database.appSettingsDao().clearAll()
             database.categoryDao().replaceAll(categoryMerge.categories)
             database.transactionDao().insertAll(mergedTransactions)
@@ -310,7 +334,11 @@ class BackupRepository(private val database: KitaTrackDatabase) {
             database.piggyBankMissedContributionDao().insertAll(importedPiggyMissedContributions)
             database.debtDao().insertAll(mergedDebts)
             database.debtTransactionDao().insertAll(importedDebtTransactions)
+            database.subscriptionDao().insertAll(mergedSubscriptions)
+            database.subscriptionTransactionDao().insertAll(importedSubscriptionTransactions)
             database.monthlySummaryDao().insertAll(mergedSummaries)
+            database.monthlyAiSummaryDao().insertAll(mergedAiSummaries)
+            database.reminderDao().insertAll(importedReminders)
             mergedSettings?.let { database.appSettingsDao().insert(it) }
         }
     }
@@ -431,7 +459,9 @@ private fun DebtTransactionEntity.toJson() = JSONObject().apply { put("id", id);
 private fun SubscriptionEntity.toJson() = JSONObject().apply { put("id", id); put("name", name); put("amount", amount); put("categoryId", categoryId ?: JSONObject.NULL); put("billingCycle", billingCycle); put("customIntervalDays", customIntervalDays ?: JSONObject.NULL); put("nextBillingDate", nextBillingDate ?: JSONObject.NULL); put("startDate", startDate ?: JSONObject.NULL); put("endDate", endDate ?: JSONObject.NULL); put("reserveEnabled", reserveEnabled); put("reservedAmount", reservedAmount); put("importance", importance); put("status", status); put("notes", notes ?: JSONObject.NULL); put("createdAt", createdAt); put("updatedAt", updatedAt); put("isActive", isActive); put("isArchived", isArchived); put("lastPaidDate", lastPaidDate ?: JSONObject.NULL); put("completedAt", completedAt ?: JSONObject.NULL); put("autoPay", autoPay); put("paymentMethod", paymentMethod ?: JSONObject.NULL); put("reminderEnabled", reminderEnabled) }
 private fun SubscriptionTransactionEntity.toJson() = JSONObject().apply { put("id", id); put("subscriptionId", subscriptionId); put("amount", amount); put("transactionType", transactionType); put("sourceTransactionId", sourceTransactionId ?: JSONObject.NULL); put("date", date); put("notes", notes ?: JSONObject.NULL); put("createdAt", createdAt) }
 private fun MonthlySummaryEntity.toJson() = JSONObject().apply { put("monthKey", monthKey); put("totalIncome", totalIncome); put("totalExpenses", totalExpenses); put("mainBalance", mainBalance); put("debtReserve", debtReserve); put("piggyBankTotal", piggyBankTotal); put("subscriptionReserve", subscriptionReserve); put("totalMoneyTracked", totalMoneyTracked); put("updatedAt", updatedAt) }
-private fun AppSettingsEntity.toJson() = JSONObject().apply { put("id", id); put("currencyCode", currencyCode); put("pinEnabled", pinEnabled); put("biometricEnabled", biometricEnabled); put("remindersEnabled", remindersEnabled); put("aiSummaryEnabled", aiSummaryEnabled) }
+private fun MonthlyAiSummaryEntity.toJson() = JSONObject().apply { put("id", id); put("year", year); put("month", month); put("summaryText", summaryText); put("generatedAt", generatedAt); put("inputDataHash", inputDataHash ?: JSONObject.NULL); put("modelName", modelName ?: JSONObject.NULL); put("promptVersion", promptVersion); put("status", status); put("errorMessage", errorMessage ?: JSONObject.NULL); put("createdAt", createdAt); put("updatedAt", updatedAt) }
+private fun ReminderEntity.toJson() = JSONObject().apply { put("id", id); put("reminderType", reminderType); put("linkedEntityId", linkedEntityId ?: JSONObject.NULL); put("linkedEntityType", linkedEntityType ?: JSONObject.NULL); put("title", title); put("message", message); put("scheduledAt", scheduledAt); put("triggerAt", triggerAt); put("reminderTiming", reminderTiming); put("customOffsetMinutes", customOffsetMinutes ?: JSONObject.NULL); put("isEnabled", isEnabled); put("status", status); put("createdAt", createdAt); put("updatedAt", updatedAt); put("sentAt", sentAt ?: JSONObject.NULL) }
+private fun AppSettingsEntity.toJson() = JSONObject().apply { put("id", id); put("currencyCode", currencyCode); put("pinEnabled", pinEnabled); put("biometricEnabled", biometricEnabled); put("remindersEnabled", remindersEnabled); put("debtRemindersEnabled", debtRemindersEnabled); put("subscriptionRemindersEnabled", subscriptionRemindersEnabled); put("budgetAlertsEnabled", budgetAlertsEnabled); put("piggyBankRemindersEnabled", piggyBankRemindersEnabled); put("missedContributionRemindersEnabled", missedContributionRemindersEnabled); put("defaultReminderTiming", defaultReminderTiming); put("defaultCustomOffsetMinutes", defaultCustomOffsetMinutes ?: JSONObject.NULL); put("aiSummaryEnabled", aiSummaryEnabled) }
 
 private fun JSONArray.toCategoryEntities() = List(length()) { i -> getJSONObject(i).run { CategoryEntity(requiredLong("id"), requiredString("name"), requiredString("type"), optNullableString("iconName"), optNullableString("colorHex"), optBoolean("isArchived"), optBoolean("isDefault"), requiredLong("createdAt"), requiredLong("updatedAt")) } }
 private fun JSONArray.toTransactionEntities() = List(length()) { i -> getJSONObject(i).run { TransactionEntity(requiredLong("id"), requiredLong("amount"), requiredString("type"), optNullableLong("categoryId"), optString("description"), optNullableString("note"), requiredLong("occurredAt"), requiredLong("createdAt"), requiredLong("updatedAt")) } }
@@ -444,6 +474,8 @@ private fun JSONArray.toDebtTransactionEntities() = List(length()) { i -> getJSO
 private fun JSONArray.toSubscriptionEntities() = List(length()) { i -> getJSONObject(i).run { SubscriptionEntity(requiredLong("id"), optString("name"), optLong("amount"), optNullableLong("categoryId"), optString("billingCycle", "MONTHLY"), optNullableLong("customIntervalDays")?.toInt(), optNullableLong("nextBillingDate") ?: optNullableLong("nextDueDate"), optNullableLong("startDate"), optNullableLong("endDate"), optBoolean("reserveEnabled"), optLong("reservedAmount"), optString("importance", "MEDIUM"), optString("status", "ACTIVE"), optNullableString("notes"), optLong("createdAt"), optLong("updatedAt"), optBoolean("isActive", true), optBoolean("isArchived"), optNullableLong("lastPaidDate"), optNullableLong("completedAt"), optBoolean("autoPay"), optNullableString("paymentMethod"), optBoolean("reminderEnabled")) } }
 private fun JSONArray.toSubscriptionTransactionEntities() = List(length()) { i -> getJSONObject(i).run { SubscriptionTransactionEntity(requiredLong("id"), requiredLong("subscriptionId"), requiredLong("amount"), requiredString("transactionType"), optNullableLong("sourceTransactionId"), requiredLong("date"), optNullableString("notes"), requiredLong("createdAt")) } }
 private fun JSONArray.toMonthlySummaryEntities() = List(length()) { i -> getJSONObject(i).run { MonthlySummaryEntity(requiredString("monthKey"), optLong("totalIncome"), optLong("totalExpenses"), optLong("mainBalance"), optLong("debtReserve"), optLong("piggyBankTotal"), optLong("subscriptionReserve"), optLong("totalMoneyTracked"), optLong("updatedAt")) } }
-private fun JSONObject.toSettingsEntity() = AppSettingsEntity(optInt("id", 1), optString("currencyCode", "PHP"), optBoolean("pinEnabled"), optBoolean("biometricEnabled"), optBoolean("remindersEnabled"), optBoolean("aiSummaryEnabled"))
+private fun JSONArray.toMonthlyAiSummaryEntities() = List(length()) { i -> getJSONObject(i).run { MonthlyAiSummaryEntity(requiredLong("id"), requiredLong("year").toInt(), requiredLong("month").toInt(), requiredString("summaryText"), requiredLong("generatedAt"), optNullableString("inputDataHash"), optNullableString("modelName"), optString("promptVersion", MonthlyAiSummaryEntity.PROMPT_VERSION), optString("status", MonthlyAiSummaryEntity.STATUS_GENERATED), optNullableString("errorMessage"), requiredLong("createdAt"), requiredLong("updatedAt")) } }
+private fun JSONArray.toReminderEntities() = List(length()) { i -> getJSONObject(i).run { ReminderEntity(requiredLong("id"), requiredString("reminderType"), optNullableLong("linkedEntityId"), optNullableString("linkedEntityType"), requiredString("title"), requiredString("message"), requiredLong("scheduledAt"), requiredLong("triggerAt"), requiredString("reminderTiming"), optNullableLong("customOffsetMinutes")?.toInt(), optBoolean("isEnabled", true), optString("status", ReminderEntity.STATUS_SCHEDULED), requiredLong("createdAt"), requiredLong("updatedAt"), optNullableLong("sentAt")) } }
+private fun JSONObject.toSettingsEntity() = AppSettingsEntity(optInt("id", 1), optString("currencyCode", "PHP"), optBoolean("pinEnabled"), optBoolean("biometricEnabled"), optBoolean("remindersEnabled"), optBoolean("debtRemindersEnabled", true), optBoolean("subscriptionRemindersEnabled", true), optBoolean("budgetAlertsEnabled", true), optBoolean("piggyBankRemindersEnabled", true), optBoolean("missedContributionRemindersEnabled", true), optString("defaultReminderTiming", "ONE_DAY_BEFORE"), optNullableLong("defaultCustomOffsetMinutes")?.toInt(), optBoolean("aiSummaryEnabled"))
 private fun JSONObject.optNullableString(name: String): String? = if (isNull(name)) null else optString(name)
 private fun JSONObject.optNullableLong(name: String): Long? = if (isNull(name)) null else optLong(name)

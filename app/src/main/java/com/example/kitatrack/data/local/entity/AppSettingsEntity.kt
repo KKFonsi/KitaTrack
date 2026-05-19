@@ -10,5 +10,12 @@ data class AppSettingsEntity(
     val pinEnabled: Boolean = false,
     val biometricEnabled: Boolean = false,
     val remindersEnabled: Boolean = false,
+    val debtRemindersEnabled: Boolean = true,
+    val subscriptionRemindersEnabled: Boolean = true,
+    val budgetAlertsEnabled: Boolean = true,
+    val piggyBankRemindersEnabled: Boolean = true,
+    val missedContributionRemindersEnabled: Boolean = true,
+    val defaultReminderTiming: String = "ONE_DAY_BEFORE",
+    val defaultCustomOffsetMinutes: Int? = null,
     val aiSummaryEnabled: Boolean = false
 )

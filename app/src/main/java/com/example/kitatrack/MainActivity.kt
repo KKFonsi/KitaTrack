@@ -7,7 +7,11 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.setupWithNavController
+import androidx.lifecycle.lifecycleScope
+import com.example.kitatrack.widget.KitaTrackWidgetUpdater
 import com.google.android.material.bottomnavigation.BottomNavigationView
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -27,5 +31,12 @@ class MainActivity : AppCompatActivity() {
         val navController = navHostFragment.navController
         findViewById<BottomNavigationView>(R.id.bottom_navigation)
             .setupWithNavController(navController)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        lifecycleScope.launch(Dispatchers.IO) {
+            KitaTrackWidgetUpdater.updateAll(applicationContext)
+        }
     }
 }

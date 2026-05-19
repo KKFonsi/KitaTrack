@@ -66,8 +66,25 @@
             <AutoCompleteTextView android:id="@+id/payment_piggy_input" android:layout_width="match_parent"
                 android:layout_height="wrap_content" android:inputType="none"/>
         </com.google.android.material.textfield.TextInputLayout>
-        <TextView android:id="@+id/allocation_preview" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="14dp" android:textColor="@color/kitatrack_secondary_text"/>
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/allocation_preview_card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            app:cardBackgroundColor="@color/kitatrack_card_background"
+            app:cardCornerRadius="18dp"
+            app:strokeColor="@color/kitatrack_subtle_border"
+            app:strokeWidth="1dp">
+            <TextView
+                android:id="@+id/allocation_preview"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:lineSpacingExtra="3dp"
+                android:padding="16dp"
+                android:text="Enter an income amount to preview where the money will go."
+                android:textColor="@color/kitatrack_secondary_text"
+                android:textSize="14sp" />
+        </com.google.android.material.card.MaterialCardView>
 
         <com.google.android.material.textfield.TextInputLayout android:id="@+id/notes_layout"
             android:layout_width="match_parent"

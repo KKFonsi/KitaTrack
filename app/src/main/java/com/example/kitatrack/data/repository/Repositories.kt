@@ -14,6 +14,7 @@ import com.example.kitatrack.data.local.dao.SubscriptionTransactionDao
 import com.example.kitatrack.data.local.dao.TransactionDao
 import com.example.kitatrack.data.local.entity.CategoryEntity
 import com.example.kitatrack.data.local.entity.TransactionEntity
+import com.example.kitatrack.data.local.entity.AppSettingsEntity
 import com.example.kitatrack.data.local.entity.BudgetEntity
 import com.example.kitatrack.data.local.entity.PiggyBankEntity
 import com.example.kitatrack.data.local.entity.PiggyBankTransactionEntity
@@ -26,6 +27,7 @@ import com.example.kitatrack.data.local.model.BudgetProgress
 import com.example.kitatrack.data.local.model.DebtProgress
 import com.example.kitatrack.data.local.model.PiggyBankAllocationPlan
 import com.example.kitatrack.data.local.model.SubscriptionProgress
+import com.example.kitatrack.data.local.model.TransactionWithCategory
 import com.example.kitatrack.util.DateRanges
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
@@ -163,41 +165,82 @@ class CategoryRepository(private val dao: CategoryDao) {
 class BudgetRepository(
     private val dao: BudgetDao,
     private val transactionDao: TransactionDao,
-    private val categoryDao: CategoryDao
+    private val categoryDao: CategoryDao,
+    private val debtTransactionDao: DebtTransactionDao,
+    private val piggyBankTransactionDao: PiggyBankTransactionDao,
+    private val subscriptionTransactionDao: SubscriptionTransactionDao
 ) {
     fun getAllBudgets() = dao.getAll()
     fun getActiveBudgets() = dao.getActive()
 
     fun getBudgetProgress() = combine(
-        dao.getAll(),
-        transactionDao.getAllWithCategory(),
-        categoryDao.getAll()
-    ) { budgets, transactions, categories ->
-        val names = categories.associate { it.id to it.name }
-        budgets.map { budget ->
+        combine(dao.getAll(), transactionDao.getAllWithCategory(), categoryDao.getAll()) { budgets, transactions, categories ->
+            BudgetProgressInputs(budgets, transactions, categories)
+        },
+        combine(debtTransactionDao.getAll(), piggyBankTransactionDao.getAll(), subscriptionTransactionDao.getAll()) { debtTransactions, piggyTransactions, subscriptionTransactions ->
+            BudgetReserveInputs(debtTransactions, piggyTransactions, subscriptionTransactions)
+        }
+    ) { inputs, reserves ->
+        val names = inputs.categories.associate { it.id to it.name }
+        inputs.budgets.map { budget ->
             val range = when (budget.budgetType) {
                 TYPE_WEEKLY_OVERALL, TYPE_CATEGORY_WEEKLY -> DateRanges.currentWeek()
                 TYPE_MONTHLY_OVERALL, TYPE_CATEGORY_MONTHLY -> DateRanges.currentMonth()
                 TYPE_CUSTOM_RANGE -> (budget.startDate ?: 0L)..(budget.endDate ?: Long.MAX_VALUE)
                 else -> DateRanges.currentMonth()
             }
-            val used = transactions.filter {
+            val reservePaidDebtTransactionIds = reserves.debtTransactions
+                .filter {
+                    it.transactionType == DebtRepository.TX_PAYMENT_MADE &&
+                        it.notes == DebtRepository.NOTE_PAID_USING_DEBT_RESERVE &&
+                        it.sourceTransactionId != null
+                }
+                .mapNotNull { it.sourceTransactionId }
+                .toSet()
+            val used = inputs.transactions.filter {
                 it.transaction.type == "EXPENSE" &&
                     it.transaction.occurredAt in range &&
+                    it.transaction.id !in reservePaidDebtTransactionIds &&
                     (budget.categoryId == null || it.transaction.categoryId == budget.categoryId)
             }.sumOf { it.transaction.amount }
-            val remaining = budget.amountLimit - used
-            val percent = if (budget.amountLimit <= 0) 0 else ((used * 100) / budget.amountLimit).toInt()
+            val periodIncome = inputs.transactions.filter {
+                it.transaction.type == "INCOME" && it.transaction.occurredAt in range
+            }.sumOf { it.transaction.amount }
+            val debtImpact = reserves.debtTransactions.filter {
+                it.transactionType == DebtRepository.TX_RESERVE_ALLOCATION && it.date in range
+            }.sumOf { it.amount }
+            val piggyImpact = reserves.piggyTransactions.filter {
+                it.transactionType == "AUTO_ALLOCATION" && it.date in range
+            }.sumOf { it.amount }
+            val subscriptionImpact = reserves.subscriptionTransactions.filter {
+                it.transactionType == SubscriptionRepository.TX_RESERVE_ALLOCATION && it.date in range
+            }.sumOf { it.amount }
+            val reserveImpact = debtImpact + piggyImpact + subscriptionImpact
+            val periodUsableIncome = (periodIncome - reserveImpact).coerceAtLeast(0)
+            val adjustedLimit = minOf(budget.amountLimit, periodUsableIncome).coerceAtLeast(0)
+            val remaining = adjustedLimit - used
+            val percent = when {
+                adjustedLimit <= 0L && used > 0L -> 100
+                adjustedLimit <= 0L -> 0
+                else -> ((used * 100) / adjustedLimit).toInt()
+            }
             BudgetProgress(
                 budgetId = budget.id,
                 name = budget.name,
                 budgetType = budget.budgetType,
                 limitAmount = budget.amountLimit,
+                originalLimitAmount = budget.amountLimit,
+                adjustedLimitAmount = adjustedLimit,
                 usedAmount = used,
                 remainingAmount = remaining,
                 usagePercent = percent,
+                reserveImpactAmount = reserveImpact,
+                debtReserveImpact = debtImpact,
+                piggyBankImpact = piggyImpact,
+                subscriptionReserveImpact = subscriptionImpact,
+                periodUsableIncome = periodUsableIncome,
                 isNearLimit = percent >= 85 && percent < 100,
-                isOverLimit = percent >= 100,
+                isOverLimit = percent >= 100 && (used > 0 || adjustedLimit > 0),
                 categoryName = budget.categoryId?.let { names[it] },
                 periodLabel = when (budget.budgetType) {
                     TYPE_WEEKLY_OVERALL, TYPE_CATEGORY_WEEKLY -> "This Week"
@@ -258,6 +301,18 @@ class BudgetRepository(
         val CATEGORY_TYPES = setOf(TYPE_CATEGORY_WEEKLY, TYPE_CATEGORY_MONTHLY)
     }
 }
+
+private data class BudgetProgressInputs(
+    val budgets: List<BudgetEntity>,
+    val transactions: List<TransactionWithCategory>,
+    val categories: List<CategoryEntity>
+)
+
+private data class BudgetReserveInputs(
+    val debtTransactions: List<DebtTransactionEntity>,
+    val piggyTransactions: List<PiggyBankTransactionEntity>,
+    val subscriptionTransactions: List<SubscriptionTransactionEntity>
+)
 class PiggyBankRepository(
     private val dao: PiggyBankDao,
     private val transactionDao: PiggyBankTransactionDao,
@@ -343,6 +398,16 @@ class PiggyBankRepository(
             }
         }
         return allocated
+    }
+
+    suspend fun previewAllocationFromIncome(incomeAmount: Long): Long {
+        return dao.getAllForExport()
+            .filter { it.isActive && !it.isArchived && it.selectedAllocationPercent > 0 }
+            .sumOf { bank ->
+                val proposed = incomeAmount * bank.selectedAllocationPercent / 100
+                val remainingNeed = (bank.targetAmount - bank.currentAmount).coerceAtLeast(0)
+                if (bank.allowOverSaving) proposed else minOf(proposed, remainingNeed)
+            }
     }
     fun calculateAllocationPlan(
         targetAmount: Long,
@@ -615,6 +680,21 @@ class DebtRepository(
         return allocated
     }
 
+    suspend fun previewAllocationFromIncome(incomeAmount: Long): Long {
+        var remainingIncome = incomeAmount
+        var allocated = 0L
+        val debts = dao.getAllForExport()
+            .filter { it.isActive && !it.isArchived && it.debtType == TYPE_I_OWE && it.autoReserveEnabled && it.remainingAmount > 0 }
+            .sortedWith(compareBy<DebtEntity> { (it.nextDueDate ?: it.dueDate) ?: Long.MAX_VALUE }.thenByDescending { it.priority }.thenBy { it.createdAt })
+        debts.forEach { debt ->
+            if (remainingIncome <= 0) return@forEach
+            val amount = minOf(reserveNeeded(debt), remainingIncome)
+            allocated += amount
+            remainingIncome -= amount
+        }
+        return allocated
+    }
+
     private fun reserveNeeded(debt: DebtEntity): Long {
         val remainingReserveNeeded = (debt.remainingAmount - debt.reservedAmount).coerceAtLeast(0)
         val cycleNeed = debt.installmentAmount?.let { (it - debt.reservedAmount).coerceAtLeast(0) } ?: remainingReserveNeeded
@@ -628,9 +708,20 @@ class DebtRepository(
         if (debt.debtType == TYPE_I_OWE && fromReserve && amount > debt.reservedAmount) return Result.failure(IllegalArgumentException("Debt Reserve is not enough for this payment."))
         val now = System.currentTimeMillis()
         var txId: Long? = null
-        if (debt.debtType == TYPE_I_OWE && !fromReserve) {
+        if (debt.debtType == TYPE_I_OWE) {
             val categoryId = categoryDao.getByNameAndType("Debt / Loans", CategoryRepository.TYPE_EXPENSE)?.id
-            txId = appTransactionDao.insert(TransactionEntity(amount = amount, type = "EXPENSE", categoryId = categoryId, description = "Debt payment: ${debt.name}", occurredAt = now, createdAt = now, updatedAt = now))
+            txId = appTransactionDao.insert(
+                TransactionEntity(
+                    amount = amount,
+                    type = "EXPENSE",
+                    categoryId = categoryId,
+                    description = "Debt payment: ${debt.name}",
+                    note = if (fromReserve) NOTE_PAID_USING_DEBT_RESERVE else "Paid using Main Balance",
+                    occurredAt = now,
+                    createdAt = now,
+                    updatedAt = now
+                )
+            )
         } else if (debt.debtType == TYPE_OWED_TO_ME) {
             val categoryId = categoryDao.getByNameAndType("Debt repayment", CategoryRepository.TYPE_INCOME_SOURCE)?.id
                 ?: categoryDao.getByNameAndType("Other", CategoryRepository.TYPE_INCOME_SOURCE)?.id
@@ -656,7 +747,7 @@ class DebtRepository(
                 updatedAt = now
             )
         )
-        transactionDao.insert(DebtTransactionEntity(debtId = id, amount = amount, transactionType = if (debt.debtType == TYPE_OWED_TO_ME) TX_PAYMENT_RECEIVED else TX_PAYMENT_MADE, sourceTransactionId = txId, date = now, createdAt = now, notes = if (fromReserve) "Paid using Debt Reserve" else "Paid using Main Balance"))
+        transactionDao.insert(DebtTransactionEntity(debtId = id, amount = amount, transactionType = if (debt.debtType == TYPE_OWED_TO_ME) TX_PAYMENT_RECEIVED else TX_PAYMENT_MADE, sourceTransactionId = txId, date = now, createdAt = now, notes = if (fromReserve) NOTE_PAID_USING_DEBT_RESERVE else "Paid using Main Balance"))
         return Result.success(Unit)
     }
 
@@ -712,6 +803,7 @@ class DebtRepository(
         const val TX_PAYMENT_RECEIVED = "PAYMENT_RECEIVED"
         const val TX_MANUAL_RESERVE_ADD = "MANUAL_RESERVE_ADD"
         const val TX_MANUAL_RESERVE_REMOVE = "MANUAL_RESERVE_REMOVE"
+        const val NOTE_PAID_USING_DEBT_RESERVE = "Paid using Debt Reserve"
     }
 }
 class SubscriptionRepository(
@@ -827,6 +919,27 @@ class SubscriptionRepository(
         return allocated
     }
 
+    suspend fun previewAllocationFromIncome(incomeAmount: Long): Long {
+        var remainingIncome = incomeAmount
+        var allocated = 0L
+        val now = System.currentTimeMillis()
+        val subscriptions = dao.getAllForExport()
+            .filter { it.isActive && !it.isArchived && it.reserveEnabled && it.status !in setOf(STATUS_PAUSED, STATUS_CANCELLED, STATUS_ARCHIVED) && it.amount > 0 }
+            .sortedWith(
+                compareByDescending<SubscriptionEntity> { ((it.nextBillingDate ?: Long.MAX_VALUE) < now) }
+                    .thenBy { it.nextBillingDate ?: Long.MAX_VALUE }
+                    .thenByDescending { importanceRank(it.importance) }
+                    .thenBy { it.createdAt }
+            )
+        subscriptions.forEach { sub ->
+            if (remainingIncome <= 0) return@forEach
+            val amount = minOf((sub.amount - sub.reservedAmount).coerceAtLeast(0), remainingIncome)
+            allocated += amount
+            remainingIncome -= amount
+        }
+        return allocated
+    }
+
     suspend fun recordPayment(id: Long, amount: Long, fromReserve: Boolean): Result<Unit> {
         val sub = dao.getById(id) ?: return Result.failure(IllegalArgumentException("Subscription not found."))
         if (amount <= 0) return Result.failure(IllegalArgumentException("Payment amount must be greater than 0."))
@@ -920,4 +1033,10 @@ class SubscriptionRepository(
     }
 }
 class MonthlySummaryRepository(private val dao: MonthlySummaryDao)
-class AppSettingsRepository(private val dao: AppSettingsDao)
+class AppSettingsRepository(private val dao: AppSettingsDao) {
+    fun observeSettings() = dao.observe()
+    suspend fun getOrCreateSettings(): AppSettingsEntity {
+        return dao.getForExport() ?: AppSettingsEntity().also { dao.insert(it) }
+    }
+    suspend fun save(settings: AppSettingsEntity) = dao.insert(settings)
+}

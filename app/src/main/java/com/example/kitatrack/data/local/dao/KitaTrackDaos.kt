@@ -17,7 +17,9 @@ import com.example.kitatrack.data.local.entity.DebtTransactionEntity
 import com.example.kitatrack.data.local.entity.SubscriptionEntity
 import com.example.kitatrack.data.local.entity.SubscriptionTransactionEntity
 import com.example.kitatrack.data.local.entity.MonthlySummaryEntity
+import com.example.kitatrack.data.local.entity.MonthlyAiSummaryEntity
 import com.example.kitatrack.data.local.entity.AppSettingsEntity
+import com.example.kitatrack.data.local.entity.ReminderEntity
 import com.example.kitatrack.data.local.model.TransactionWithCategory
 import com.example.kitatrack.data.local.model.NamedAmount
 import com.example.kitatrack.data.local.model.DailyExpenseSummary
@@ -251,6 +253,8 @@ interface PiggyBankTransactionDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insert(item: PiggyBankTransactionEntity)
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertAll(items: List<PiggyBankTransactionEntity>)
     @Query("SELECT * FROM piggy_bank_transactions WHERE piggyBankId = :piggyBankId ORDER BY date DESC, createdAt DESC") fun getForPiggyBank(piggyBankId: Long): Flow<List<PiggyBankTransactionEntity>>
+    @Query("SELECT * FROM piggy_bank_transactions ORDER BY date DESC, createdAt DESC")
+    fun getAll(): Flow<List<PiggyBankTransactionEntity>>
     @Query("SELECT COALESCE(SUM(amount), 0) FROM piggy_bank_transactions WHERE transactionType = 'AUTO_ALLOCATION' AND date BETWEEN :startMillis AND :endMillis")
     fun getAutoAllocationTotalBetween(startMillis: Long, endMillis: Long): Flow<Long>
     @Query("SELECT COALESCE(SUM(amount), 0) FROM piggy_bank_transactions WHERE sourceTransactionId = :transactionId AND transactionType = 'AUTO_ALLOCATION'")
@@ -295,6 +299,8 @@ interface DebtTransactionDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertAll(items: List<DebtTransactionEntity>)
     @Query("SELECT * FROM debt_transactions WHERE debtId = :debtId ORDER BY date DESC, createdAt DESC")
     fun getForDebt(debtId: Long): Flow<List<DebtTransactionEntity>>
+    @Query("SELECT * FROM debt_transactions ORDER BY date DESC, createdAt DESC")
+    fun getAll(): Flow<List<DebtTransactionEntity>>
     @Query("SELECT * FROM debt_transactions ORDER BY id ASC") suspend fun getAllForExport(): List<DebtTransactionEntity>
     @Query("SELECT COALESCE(SUM(amount), 0) FROM debt_transactions WHERE transactionType = 'RESERVE_ALLOCATION' AND date BETWEEN :startMillis AND :endMillis")
     fun getReserveAllocationBetween(startMillis: Long, endMillis: Long): Flow<Long>
@@ -320,6 +326,8 @@ interface SubscriptionTransactionDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertAll(items: List<SubscriptionTransactionEntity>)
     @Query("SELECT * FROM subscription_transactions WHERE subscriptionId = :subscriptionId ORDER BY date DESC, createdAt DESC")
     fun getForSubscription(subscriptionId: Long): Flow<List<SubscriptionTransactionEntity>>
+    @Query("SELECT * FROM subscription_transactions ORDER BY date DESC, createdAt DESC")
+    fun getAll(): Flow<List<SubscriptionTransactionEntity>>
     @Query("SELECT * FROM subscription_transactions ORDER BY id ASC") suspend fun getAllForExport(): List<SubscriptionTransactionEntity>
     @Query("DELETE FROM subscription_transactions") suspend fun clearAll()
 }
@@ -329,9 +337,43 @@ interface MonthlySummaryDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertAll(items: List<MonthlySummaryEntity>)
     @Query("DELETE FROM monthly_summaries") suspend fun clearAll()
 }
+
+@Dao
+interface MonthlyAiSummaryDao {
+    @Query("SELECT * FROM monthly_ai_summaries WHERE year = :year AND month = :month LIMIT 1")
+    fun observeForMonth(year: Int, month: Int): Flow<MonthlyAiSummaryEntity?>
+
+    @Query("SELECT * FROM monthly_ai_summaries WHERE year = :year AND month = :month LIMIT 1")
+    suspend fun getForMonth(year: Int, month: Int): MonthlyAiSummaryEntity?
+
+    @Query("SELECT * FROM monthly_ai_summaries ORDER BY year ASC, month ASC")
+    suspend fun getAllForExport(): List<MonthlyAiSummaryEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(item: MonthlyAiSummaryEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(items: List<MonthlyAiSummaryEntity>)
+
+    @Query("DELETE FROM monthly_ai_summaries")
+    suspend fun clearAll()
+}
 @Dao
 interface AppSettingsDao {
     @Query("SELECT * FROM app_settings WHERE id = 1 LIMIT 1") suspend fun getForExport(): AppSettingsEntity?
+    @Query("SELECT * FROM app_settings WHERE id = 1 LIMIT 1") fun observe(): Flow<AppSettingsEntity?>
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insert(item: AppSettingsEntity)
     @Query("DELETE FROM app_settings") suspend fun clearAll()
+}
+
+@Dao
+interface ReminderDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insert(item: ReminderEntity): Long
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertAll(items: List<ReminderEntity>)
+    @Update suspend fun update(item: ReminderEntity)
+    @Query("SELECT * FROM reminders ORDER BY triggerAt ASC") fun getAll(): Flow<List<ReminderEntity>>
+    @Query("SELECT * FROM reminders ORDER BY id ASC") suspend fun getAllForExport(): List<ReminderEntity>
+    @Query("SELECT * FROM reminders WHERE id = :id LIMIT 1") suspend fun getById(id: Long): ReminderEntity?
+    @Query("SELECT * FROM reminders WHERE isEnabled = 1 AND status = 'SCHEDULED' ORDER BY triggerAt ASC") suspend fun getScheduled(): List<ReminderEntity>
+    @Query("DELETE FROM reminders") suspend fun clearAll()
 }

@@ -39,9 +39,9 @@ class DashboardFragment : Fragment(R.layout.fragment_dashboard) {
                     view.findViewById<TextView>(R.id.month_expenses_value).text = Formatters.peso(state.monthlyExpenses)
                     view.findViewById<TextView>(R.id.month_net_value).text = Formatters.peso(state.monthlyNet)
                     view.findViewById<TextView>(R.id.highest_expense_value).text = state.highestExpense?.let { Formatters.peso(it.transaction.amount) } ?: "?0.00"
-                    view.findViewById<TextView>(R.id.top_category_value).text = state.topCategoryName ?: "—"
-                    view.findViewById<TextView>(R.id.weekly_budget_value).text = "Weekly Budget Left: " + (state.weeklyBudget?.let { Formatters.peso(it.remainingAmount) } ?: "No active budget")
-                    view.findViewById<TextView>(R.id.monthly_budget_value).text = "Monthly Budget Left: " + (state.monthlyBudget?.let { Formatters.peso(it.remainingAmount) } ?: "No active budget")
+                    view.findViewById<TextView>(R.id.top_category_value).text = state.topCategoryName ?: "â€”"
+                    view.findViewById<TextView>(R.id.weekly_budget_value).text = "Adjusted Weekly Budget Left: " + (state.weeklyBudget?.let { Formatters.peso(it.remainingAmount) } ?: "No active budget")
+                    view.findViewById<TextView>(R.id.monthly_budget_value).text = "Adjusted Monthly Budget Left: " + (state.monthlyBudget?.let { Formatters.peso(it.remainingAmount) } ?: "No active budget")
                     view.findViewById<TextView>(R.id.budget_warning_value).text = state.budgetWarning ?: "Create a budget to track spending."
                     view.findViewById<TextView>(R.id.piggy_bank_total_value).text = Formatters.peso(state.piggyBankTotal)
                     view.findViewById<TextView>(R.id.debt_reserve_value).text = Formatters.peso(state.debtReserve)

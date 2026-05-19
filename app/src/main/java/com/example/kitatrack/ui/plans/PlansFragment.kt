@@ -83,12 +83,13 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
             val card = layoutInflater.inflate(R.layout.item_debt_card, container, false)
             card.findViewById<TextView>(R.id.debt_name).text = debt.name
             card.findViewById<TextView>(R.id.debt_meta).text =
-                "${if (debt.debtType == DebtRepository.TYPE_I_OWE) "Money I owe" else "Owed to me"} | ${debt.personName ?: "No person"} | ${debt.paymentFrequency.replace("_", " ")}"
+                "${if (debt.debtType == DebtRepository.TYPE_I_OWE) "Money I owe" else "Owed to me"} · ${debt.personName ?: "No person"}"
             card.findViewById<TextView>(R.id.debt_amounts).text = buildString {
-                append("${Formatters.peso(debt.remainingAmount)} remaining of ${Formatters.peso(debt.totalAmount)}\n")
-                append("${Formatters.peso(debt.amountPaid)} paid")
-                if (debt.debtType == DebtRepository.TYPE_I_OWE) append("\nDebt Reserve: ${Formatters.peso(debt.reservedAmount)}")
-                debt.installmentAmount?.let { append("\nPayment amount: ${Formatters.peso(it)}") }
+                append("${Formatters.peso(debt.remainingAmount)} remaining\n")
+                append("${Formatters.peso(debt.amountPaid)} paid of ${Formatters.peso(debt.totalAmount)}")
+                if (debt.debtType == DebtRepository.TYPE_I_OWE && debt.reservedAmount > 0) {
+                    append("\n${Formatters.peso(debt.reservedAmount)} reserved")
+                }
             }
             card.findViewById<ProgressBar>(R.id.debt_progress).apply {
                 progress = item.progressPercent.coerceAtMost(100)
@@ -99,7 +100,11 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
                     else -> R.color.kitatrack_primary_green
                 }))
             }
-            card.findViewById<TextView>(R.id.debt_status).text = "${item.statusLabel} | Due: ${item.dueLabel}"
+            card.findViewById<TextView>(R.id.debt_status).text = buildString {
+                append(item.statusLabel)
+                append(" · Due ${item.dueLabel}")
+                debt.installmentAmount?.let { append(" · ${Formatters.peso(it)} payment") }
+            }
             card.setOnClickListener { showDebtDetails(item) }
             card.setOnLongClickListener {
                 showDebtActions(item)
@@ -111,6 +116,7 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
 
     private fun showDebtDetails(item: DebtProgress) {
         val d = item.debt
+        val isPaid = d.remainingAmount <= 0 || d.status == DebtRepository.STATUS_PAID
         val message = buildString {
             append("${if (d.debtType == DebtRepository.TYPE_I_OWE) "Money I owe" else "Money owed to me"}\n")
             d.personName?.let { append("Person: $it\n") }
@@ -123,13 +129,18 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
             append("Next due: ${item.dueLabel}\n")
             append("Status: ${item.statusLabel}")
         }
-        MaterialAlertDialogBuilder(requireContext())
+        val builder = MaterialAlertDialogBuilder(requireContext())
             .setTitle(d.name)
             .setMessage(message)
             .setNegativeButton("Close", null)
-            .setNeutralButton("Actions") { _, _ -> showDebtActions(item) }
-            .setPositiveButton("Edit") { _, _ -> showDebtDialog(item) }
-            .show()
+        if (isPaid) {
+            builder.setPositiveButton("Archive") { _, _ -> debtViewModel.archive(d.id) }
+        } else {
+            builder
+                .setNeutralButton("Pay") { _, _ -> showDebtPaymentDialog(item) }
+                .setPositiveButton("Edit") { _, _ -> showDebtDialog(item) }
+        }
+        builder.show()
     }
 
     private fun showDebtActions(item: DebtProgress) {
@@ -144,8 +155,8 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
             .setItems(actions) { _, which ->
                 if (debt.debtType == DebtRepository.TYPE_I_OWE) {
                     when (which) {
-                        0 -> showDebtAmountDialog(item, "Payment from reserve") { amount -> debtViewModel.payment(debt.id, amount, true, debtResultHandler()) }
-                        1 -> showDebtAmountDialog(item, "Payment from Main Balance") { amount -> debtViewModel.payment(debt.id, amount, false, debtResultHandler()) }
+                        0 -> showDebtPaymentDialog(item, true)
+                        1 -> showDebtPaymentDialog(item, false)
                         2 -> showDebtAmountDialog(item, "Add to Debt Reserve") { amount -> debtViewModel.reserve(debt.id, amount, true, debtResultHandler()) }
                         3 -> showDebtAmountDialog(item, "Remove from Debt Reserve") { amount -> debtViewModel.reserve(debt.id, amount, false, debtResultHandler()) }
                         4 -> debtViewModel.archive(debt.id)
@@ -159,8 +170,108 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
             }.show()
     }
 
+    private fun showDebtPaymentDialog(item: DebtProgress, preferReserve: Boolean = true) {
+        val debt = item.debt
+        val dueAmount = paymentDueForThisTerm(debt)
+        if (dueAmount <= 0L) {
+            Snackbar.make(requireView(), "This debt is already fully paid.", Snackbar.LENGTH_LONG).show()
+            return
+        }
+        if (debt.debtType == DebtRepository.TYPE_OWED_TO_ME) {
+            showDebtPaymentConfirmation(
+                item = item,
+                title = "Record payment received",
+                amount = dueAmount,
+                fromReserve = false,
+                summary = "Amount to record: ${Formatters.peso(dueAmount)}\nTotal debt: ${Formatters.peso(debt.totalAmount)}"
+            )
+            return
+        }
+
+        val container = LinearLayout(requireContext()).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(4, 4, 4, 0)
+        }
+        val methodLayout = TextInputLayout(requireContext()).apply {
+            hint = "Payment method"
+            endIconMode = TextInputLayout.END_ICON_DROPDOWN_MENU
+        }
+        val methodInput = AutoCompleteTextView(requireContext()).apply {
+            inputType = android.text.InputType.TYPE_NULL
+            keyListener = null
+        }
+        methodLayout.addView(methodInput)
+        val details = TextView(requireContext()).apply {
+            setTextColor(ContextCompat.getColor(requireContext(), R.color.kitatrack_secondary_text))
+            textSize = 14f
+            setPadding(0, 14, 0, 0)
+        }
+        container.addView(methodLayout)
+        container.addView(details)
+
+        val labels = listOf("Debt Reserve", "Main Balance")
+        methodInput.setAdapter(ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, labels))
+        configureDropdown(methodInput)
+        var fromReserve = preferReserve && debt.reservedAmount >= dueAmount
+        fun updateDetails() {
+            methodInput.setText(if (fromReserve) labels[0] else labels[1], false)
+            details.text = buildString {
+                if (fromReserve) {
+                    append("Debt Reserve available: ${Formatters.peso(debt.reservedAmount)}\n")
+                    append("Main Balance impact: ${Formatters.peso(0)} because this money was already reserved.\n")
+                } else {
+                    append("Source: Main Balance\n")
+                    append("Main Balance impact: -${Formatters.peso(dueAmount)}\n")
+                }
+                append("Amount due this term: ${Formatters.peso(dueAmount)}\n")
+                append("Total debt: ${Formatters.peso(debt.totalAmount)}")
+                if (dueAmount == debt.remainingAmount) append("\nFinal payment")
+            }
+        }
+        methodInput.setOnItemClickListener { _, _, pos, _ ->
+            fromReserve = pos == 0
+            updateDetails()
+        }
+        updateDetails()
+
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Pay ${debt.name}")
+            .setView(container)
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Pay") { _, _ ->
+                debtViewModel.payment(debt.id, dueAmount, fromReserve, debtResultHandler())
+            }
+            .show()
+    }
+
+    private fun showDebtPaymentConfirmation(
+        item: DebtProgress,
+        title: String,
+        amount: Long,
+        fromReserve: Boolean,
+        summary: String
+    ) {
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(title)
+            .setMessage(summary)
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Save") { _, _ ->
+                debtViewModel.payment(item.debt.id, amount, fromReserve, debtResultHandler())
+            }
+            .show()
+    }
+
+    private fun paymentDueForThisTerm(debt: com.example.kitatrack.data.local.entity.DebtEntity): Long {
+        val remaining = debt.remainingAmount.coerceAtLeast(0)
+        val scheduled = debt.installmentAmount?.takeIf { it > 0 } ?: remaining
+        return minOf(remaining, scheduled)
+    }
+
     private fun debtResultHandler(): (Result<Unit>) -> Unit = { result ->
-        result.onSuccess { Snackbar.make(requireView(), "Debt updated.", Snackbar.LENGTH_LONG).show() }
+        result.onSuccess {
+            Snackbar.make(requireView(), "Debt updated.", Snackbar.LENGTH_LONG).show()
+            lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) { app.reminderRepository.rescheduleAll() }
+        }
         result.onFailure { e -> Snackbar.make(requireView(), e.message ?: "Debt could not be updated.", Snackbar.LENGTH_LONG).show() }
     }
 
@@ -737,17 +848,21 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
             val card = layoutInflater.inflate(R.layout.item_budget_card, container, false)
             card.findViewById<TextView>(R.id.budget_name).text = budget.name
             card.findViewById<TextView>(R.id.budget_meta).text =
-                "${budget.periodLabel} | ${budget.categoryName ?: "Overall"}${if (!budget.isActive) " | Inactive" else ""}"
+                "${budget.periodLabel} · ${budget.categoryName ?: "Overall"}${if (!budget.isActive) " · Inactive" else ""}"
             card.findViewById<TextView>(R.id.budget_amounts).text =
                 if (budget.remainingAmount >= 0) {
-                    "${Formatters.peso(budget.remainingAmount)} left of ${Formatters.peso(budget.limitAmount)}\n${Formatters.peso(budget.usedAmount)} used"
+                    "${Formatters.peso(budget.remainingAmount)} left\n" +
+                        "${Formatters.peso(budget.usedAmount)} used of ${Formatters.peso(budget.adjustedLimitAmount)} usable"
                 } else {
-                    "${Formatters.peso(budget.usedAmount)} used of ${Formatters.peso(budget.limitAmount)}\nOver by ${Formatters.peso(-budget.remainingAmount)}"
+                    "${Formatters.peso(-budget.remainingAmount)} over\n" +
+                        "${Formatters.peso(budget.usedAmount)} used of ${Formatters.peso(budget.adjustedLimitAmount)} usable"
                 }
             card.findViewById<TextView>(R.id.budget_status).text = when {
                 !budget.isActive -> "Inactive"
+                budget.adjustedLimitAmount <= 0L && budget.reserveImpactAmount > 0L -> "No spendable budget after reserves"
                 budget.isOverLimit -> "Over budget"
                 budget.isNearLimit -> "Near limit"
+                budget.reserveImpactAmount > 0L -> "${Formatters.peso(budget.reserveImpactAmount)} reserved this period"
                 else -> "On track"
             }
             card.findViewById<ProgressBar>(R.id.budget_progress).apply {
@@ -786,10 +901,13 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
             "Monthly category budget"
         )
         val values = listOf(BudgetRepository.TYPE_WEEKLY_OVERALL, BudgetRepository.TYPE_MONTHLY_OVERALL, BudgetRepository.TYPE_CATEGORY_WEEKLY, BudgetRepository.TYPE_CATEGORY_MONTHLY)
+        val budgetCategories = latestState.categories
         type.setAdapter(ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, types))
-        category.setAdapter(ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, latestState.categories.map { it.name }))
+        category.setAdapter(ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, budgetCategories.map { it.name }))
+        configureDropdown(type)
+        configureDropdown(category)
         var selectedType = existing?.budgetType ?: values[0]
-        var selectedCategory = latestState.categories.firstOrNull { it.name == existing?.categoryName }
+        var selectedCategory = budgetCategories.firstOrNull { it.name == existing?.categoryName }
         name.setText(existing?.name)
         amount.setText(existing?.limitAmount?.toBigDecimal()?.movePointLeft(2)?.stripTrailingZeros()?.toPlainString())
         type.setText(types[values.indexOf(selectedType).coerceAtLeast(0)], false)
@@ -809,7 +927,14 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
             selectedType = values[pos]
             updateCategoryVisibility()
         }
-        category.setOnItemClickListener { _, _, pos, _ -> selectedCategory = latestState.categories[pos] }
+        category.setOnClickListener {
+            if (budgetCategories.isEmpty()) {
+                Snackbar.make(requireView(), "No expense categories found. Add one in Manage Categories.", Snackbar.LENGTH_LONG).show()
+            } else {
+                category.post { category.showDropDown() }
+            }
+        }
+        category.setOnItemClickListener { _, _, pos, _ -> selectedCategory = budgetCategories.getOrNull(pos) }
         MaterialAlertDialogBuilder(requireContext())
             .setTitle(if (existing == null) "Add budget" else "Edit budget")
             .setView(dialogView)

@@ -1,12 +1,18 @@
 package com.example.kitatrack.ui.settings
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.net.Uri
 import android.os.Bundle
 import android.provider.OpenableColumns
 import android.view.View
+import android.widget.ArrayAdapter
+import android.widget.AutoCompleteTextView
 import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
@@ -14,10 +20,13 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.example.kitatrack.KitaTrackApplication
 import com.example.kitatrack.R
+import com.example.kitatrack.data.local.entity.ReminderEntity
 import com.example.kitatrack.data.repository.RestoreMode
+import com.example.kitatrack.reminders.NotificationHelper
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
+import com.google.android.material.switchmaterial.SwitchMaterial
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -25,7 +34,7 @@ import kotlinx.coroutines.launch
 
 class SettingsFragment : Fragment(R.layout.fragment_settings) {
     private val app by lazy { requireActivity().application as KitaTrackApplication }
-    private val viewModel by viewModels<SettingsViewModel> { SettingsViewModel.Factory(app.backupRepository) }
+    private val viewModel by viewModels<SettingsViewModel> { SettingsViewModel.Factory(app.backupRepository, app.appSettingsRepository, app.reminderRepository) }
     private var pendingExportContent: String? = null
     private var pendingExportSuccessMessage: String = ""
 
@@ -45,6 +54,10 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         }.onFailure {
             showMessage(it.message ?: "Invalid backup file selected.")
         }
+    }
+    private val notificationPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) {
+        refreshPermissionStatus(requireView())
+        if (it) viewModel.rescheduleReminders() else showMessage("Notifications are off. KitaTrack can still track your data, but reminders will not appear until notifications are allowed.")
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -73,6 +86,7 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         view.findViewById<MaterialButton>(R.id.reset_data_button).setOnClickListener {
             showResetConfirmation()
         }
+        setupReminderControls(view)
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
@@ -93,6 +107,70 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
                 }
             }
         }
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
+                viewModel.reminderSettings.collect { settings ->
+                    view.findViewById<SwitchMaterial>(R.id.master_reminders_switch).isChecked = settings.remindersEnabled
+                    view.findViewById<SwitchMaterial>(R.id.debt_reminders_switch).isChecked = settings.debtRemindersEnabled
+                    view.findViewById<SwitchMaterial>(R.id.subscription_reminders_switch).isChecked = settings.subscriptionRemindersEnabled
+                    view.findViewById<SwitchMaterial>(R.id.budget_alerts_switch).isChecked = settings.budgetAlertsEnabled
+                    view.findViewById<SwitchMaterial>(R.id.piggy_reminders_switch).isChecked = settings.piggyBankRemindersEnabled
+                    view.findViewById<SwitchMaterial>(R.id.missed_reminders_switch).isChecked = settings.missedContributionRemindersEnabled
+                    view.findViewById<SwitchMaterial>(R.id.ai_monthly_summary_switch).isChecked = settings.aiSummaryEnabled
+                    view.findViewById<AutoCompleteTextView>(R.id.reminder_timing_input).setText(timingLabel(settings.defaultReminderTiming), false)
+                }
+            }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        view?.let { refreshPermissionStatus(it) }
+    }
+
+    private fun setupReminderControls(view: View) {
+        refreshPermissionStatus(view)
+        view.findViewById<MaterialButton>(R.id.request_notifications_button).setOnClickListener {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            } else {
+                showMessage("Notifications are already available on this Android version.")
+            }
+        }
+        val timingInput = view.findViewById<AutoCompleteTextView>(R.id.reminder_timing_input)
+        val labels = listOf("Same day", "1 day before", "3 days before", "1 week before")
+        val values = listOf(ReminderEntity.TIMING_SAME_DAY, ReminderEntity.TIMING_ONE_DAY_BEFORE, ReminderEntity.TIMING_THREE_DAYS_BEFORE, ReminderEntity.TIMING_ONE_WEEK_BEFORE)
+        timingInput.setAdapter(ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, labels))
+        timingInput.threshold = 0
+        timingInput.keyListener = null
+        timingInput.setOnClickListener { timingInput.showDropDown() }
+        timingInput.setOnItemClickListener { _, _, pos, _ ->
+            viewModel.saveReminderSettings { it.copy(defaultReminderTiming = values[pos]) }
+        }
+        view.findViewById<SwitchMaterial>(R.id.master_reminders_switch).setOnCheckedChangeListener { _, checked -> viewModel.saveReminderSettings { it.copy(remindersEnabled = checked) } }
+        view.findViewById<SwitchMaterial>(R.id.debt_reminders_switch).setOnCheckedChangeListener { _, checked -> viewModel.saveReminderSettings { it.copy(debtRemindersEnabled = checked) } }
+        view.findViewById<SwitchMaterial>(R.id.subscription_reminders_switch).setOnCheckedChangeListener { _, checked -> viewModel.saveReminderSettings { it.copy(subscriptionRemindersEnabled = checked) } }
+        view.findViewById<SwitchMaterial>(R.id.budget_alerts_switch).setOnCheckedChangeListener { _, checked -> viewModel.saveReminderSettings { it.copy(budgetAlertsEnabled = checked) } }
+        view.findViewById<SwitchMaterial>(R.id.piggy_reminders_switch).setOnCheckedChangeListener { _, checked -> viewModel.saveReminderSettings { it.copy(piggyBankRemindersEnabled = checked) } }
+        view.findViewById<SwitchMaterial>(R.id.missed_reminders_switch).setOnCheckedChangeListener { _, checked -> viewModel.saveReminderSettings { it.copy(missedContributionRemindersEnabled = checked) } }
+        view.findViewById<SwitchMaterial>(R.id.ai_monthly_summary_switch).setOnCheckedChangeListener { _, checked -> viewModel.saveAppSettings { it.copy(aiSummaryEnabled = checked) } }
+        view.findViewById<MaterialButton>(R.id.refresh_reminders_button).setOnClickListener { viewModel.rescheduleReminders() }
+    }
+
+    private fun refreshPermissionStatus(view: View) {
+        val allowed = NotificationHelper.canNotify(requireContext())
+        view.findViewById<TextView>(R.id.notification_permission_value).text =
+            if (allowed) "Notifications are allowed." else "Notifications are off. Reminders will not appear until permission is allowed."
+        view.findViewById<MaterialButton>(R.id.request_notifications_button).isVisible =
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun timingLabel(value: String): String = when (value) {
+        ReminderEntity.TIMING_SAME_DAY -> "Same day"
+        ReminderEntity.TIMING_THREE_DAYS_BEFORE -> "3 days before"
+        ReminderEntity.TIMING_ONE_WEEK_BEFORE -> "1 week before"
+        else -> "1 day before"
     }
 
     private fun writeExport(uri: Uri?) {

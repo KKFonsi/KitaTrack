@@ -2,6 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
     <application
         android:name=".KitaTrackApplication"
         android:allowBackup="true"
@@ -12,6 +15,35 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.KitaTrack">
+        <receiver
+            android:name=".widget.KitaTrackWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/kitatrack_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".reminders.ReminderReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".reminders.BootReminderReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+        <activity
+            android:name=".ui.quickadd.QuickAddActivity"
+            android:exported="false"
+            android:theme="@style/Theme.KitaTrack" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true">

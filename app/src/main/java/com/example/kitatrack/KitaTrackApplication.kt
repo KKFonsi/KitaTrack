@@ -8,8 +8,14 @@ import com.example.kitatrack.data.repository.BackupRepository
 import com.example.kitatrack.data.repository.TransactionRepository
 import com.example.kitatrack.data.repository.BudgetRepository
 import com.example.kitatrack.data.repository.DebtRepository
+import com.example.kitatrack.data.repository.IncomeAllocationUseCase
+import com.example.kitatrack.data.repository.MonthlyAiSummaryRepository
 import com.example.kitatrack.data.repository.PiggyBankRepository
+import com.example.kitatrack.data.repository.AppSettingsRepository
+import com.example.kitatrack.data.repository.ReminderRepository
 import com.example.kitatrack.data.repository.SubscriptionRepository
+import com.example.kitatrack.reminders.NotificationHelper
+import com.example.kitatrack.reminders.ReminderScheduler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -32,21 +38,58 @@ class KitaTrackApplication : Application() {
             .addMigrations(KitaTrackDatabase.MIGRATION_6_7)
             .addMigrations(KitaTrackDatabase.MIGRATION_7_8)
             .addMigrations(KitaTrackDatabase.MIGRATION_8_9)
+            .addMigrations(KitaTrackDatabase.MIGRATION_9_10)
+            .addMigrations(KitaTrackDatabase.MIGRATION_10_11)
             .build()
     }
 
     val transactionRepository by lazy { TransactionRepository(database.transactionDao()) }
     val categoryRepository by lazy { CategoryRepository(database.categoryDao()) }
-    val budgetRepository by lazy { BudgetRepository(database.budgetDao(), database.transactionDao(), database.categoryDao()) }
+    val budgetRepository by lazy {
+        BudgetRepository(
+            database.budgetDao(),
+            database.transactionDao(),
+            database.categoryDao(),
+            database.debtTransactionDao(),
+            database.piggyBankTransactionDao(),
+            database.subscriptionTransactionDao()
+        )
+    }
     val debtRepository by lazy { DebtRepository(database.debtDao(), database.debtTransactionDao(), database.transactionDao(), database.categoryDao()) }
     val piggyBankRepository by lazy { PiggyBankRepository(database.piggyBankDao(), database.piggyBankTransactionDao(), database.piggyBankMissedContributionDao()) }
     val subscriptionRepository by lazy { SubscriptionRepository(database.subscriptionDao(), database.subscriptionTransactionDao(), database.transactionDao(), database.categoryDao()) }
+    val incomeAllocationUseCase by lazy { IncomeAllocationUseCase(debtRepository, piggyBankRepository, subscriptionRepository) }
+    val appSettingsRepository by lazy { AppSettingsRepository(database.appSettingsDao()) }
+    val monthlyAiSummaryRepository by lazy {
+        MonthlyAiSummaryRepository(
+            database.monthlyAiSummaryDao(),
+            database.transactionDao(),
+            database.debtDao(),
+            database.piggyBankDao(),
+            database.piggyBankMissedContributionDao(),
+            database.subscriptionDao(),
+            appSettingsRepository
+        )
+    }
+    val reminderRepository by lazy {
+        ReminderRepository(
+            database.reminderDao(),
+            appSettingsRepository,
+            debtRepository,
+            subscriptionRepository,
+            budgetRepository,
+            piggyBankRepository,
+            ReminderScheduler(this)
+        )
+    }
     val backupRepository by lazy { BackupRepository(database) }
 
     override fun onCreate() {
         super.onCreate()
+        NotificationHelper.createChannels(this)
         applicationScope.launch {
             categoryRepository.ensureDefaultCategories()
+            reminderRepository.rescheduleAll()
         }
     }
 }
