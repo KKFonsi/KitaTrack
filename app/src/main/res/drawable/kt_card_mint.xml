@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <shape xmlns:android="http://schemas.android.com/apk/res/android">
-    <gradient android:angle="315" android:startColor="@color/kitatrack_card_background" android:centerColor="@color/kitatrack_soft_planner_background" android:endColor="@color/kitatrack_soft_mint" />
     <corners android:radius="24dp" />
+    <solid android:color="@color/kitatrack_soft_planner_background" />
     <stroke android:width="1dp" android:color="@color/kitatrack_strong_border" />
 </shape>

@@ -8,6 +8,7 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.kitatrack.KitaTrackApplication
@@ -26,6 +27,9 @@ class CategoriesFragment : Fragment(R.layout.fragment_categories) {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        view.findViewById<MaterialButton>(R.id.categories_back_button).setOnClickListener {
+            findNavController().popBackStack()
+        }
         val adapter = CategoryAdapter(
             onEdit = { showCategoryDialog(it) },
             onDelete = { category ->

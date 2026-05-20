@@ -30,7 +30,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp"
-        android:text="₱0.00"
+        android:text="PHP 0.00"
         android:textColor="@color/kitatrack_primary_green"
         android:textSize="24sp"
         android:textStyle="bold" />
@@ -41,7 +41,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
         android:maxLines="2"
-        android:text="Debt ₱0.00 · Piggy ₱0.00 · Subs ₱0.00"
+        android:text="Debt PHP 0.00 | Piggy PHP 0.00 | Subs PHP 0.00"
         android:textColor="@color/kitatrack_muted_text"
         android:textSize="11sp" />
 

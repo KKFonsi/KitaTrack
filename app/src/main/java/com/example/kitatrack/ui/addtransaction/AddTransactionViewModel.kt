@@ -38,6 +38,8 @@ class AddTransactionViewModel(
     val saveResults = _saveResults.asSharedFlow()
     private val _allocationPreview = MutableStateFlow("Enter an income amount to preview where the money will go.")
     val allocationPreview = _allocationPreview.asStateFlow()
+    private val _isSaving = MutableStateFlow(false)
+    val isSaving = _isSaving.asStateFlow()
 
     fun previewAllocation(amountText: String) {
         viewModelScope.launch {
@@ -46,7 +48,10 @@ class AddTransactionViewModel(
                 _allocationPreview.value = "Enter an income amount to preview where the money will go."
                 return@launch
             }
-            val amountInCentavos = amount.movePointRight(2).setScale(0, java.math.RoundingMode.HALF_UP).longValueExact()
+            val amountInCentavos = amount.toCentavosOrNull() ?: run {
+                _allocationPreview.value = "Enter a valid amount to preview allocation."
+                return@launch
+            }
             val result = incomeAllocationUseCase.previewIncome(amountInCentavos)
             _allocationPreview.value = result.toPreviewText()
         }
@@ -63,68 +68,76 @@ class AddTransactionViewModel(
         piggyBankIdForExpense: Long? = null
     ) {
         viewModelScope.launch {
+            if (_isSaving.value) return@launch
             val amount = amountText.toBigDecimalOrNull()
             when {
                 type == null -> _saveResults.emit(SaveTransactionResult.Error("Select income or expense."))
-                amount == null || amount <= java.math.BigDecimal.ZERO ->
-                    _saveResults.emit(SaveTransactionResult.Error("Amount must be greater than 0."))
-                category == null -> _saveResults.emit(
-                    SaveTransactionResult.Error(if (type == TransactionType.INCOME) "Select a source of funds." else "Select a category.")
-                )
-                type == TransactionType.EXPENSE && description.trim().isBlank() ->
-                    _saveResults.emit(SaveTransactionResult.Error("Description cannot be empty."))
+                amount == null || amount <= java.math.BigDecimal.ZERO -> _saveResults.emit(SaveTransactionResult.Error("Amount must be greater than 0."))
+                category == null -> _saveResults.emit(SaveTransactionResult.Error(if (type == TransactionType.INCOME) "Select a source of funds." else "Select a category."))
+                type == TransactionType.EXPENSE && description.trim().isBlank() -> _saveResults.emit(SaveTransactionResult.Error("Description cannot be empty."))
                 occurredAt == null -> _saveResults.emit(SaveTransactionResult.Error("Select a valid date."))
                 else -> {
-                    val now = System.currentTimeMillis()
-                    val amountInCentavos = amount.movePointRight(2).setScale(0, java.math.RoundingMode.HALF_UP).longValueExact()
-                    if (existingId == null) {
-                        val insertedId = transactionRepository.insert(
-                            TransactionEntity(
+                    val amountInCentavos = amount.toCentavosOrNull()
+                    if (amountInCentavos == null) {
+                        _saveResults.emit(SaveTransactionResult.Error("Enter a valid amount."))
+                        return@launch
+                    }
+                    _isSaving.value = true
+                    try {
+                        val now = System.currentTimeMillis()
+                        if (existingId == null) {
+                            val insertedId = transactionRepository.insert(
+                                TransactionEntity(
+                                    amount = amountInCentavos,
+                                    type = type.name,
+                                    categoryId = category.id,
+                                    description = if (type == TransactionType.INCOME) "" else description.trim(),
+                                    note = if (type == TransactionType.INCOME) null else note?.trim()?.ifBlank { null },
+                                    occurredAt = occurredAt,
+                                    createdAt = now,
+                                    updatedAt = now
+                                )
+                            )
+                            var allocationSummary: String? = null
+                            if (type == TransactionType.INCOME) {
+                                allocationSummary = incomeAllocationUseCase
+                                    .allocateIncome(insertedId, amountInCentavos, occurredAt)
+                                    .toSnackSummary()
+                            } else if (piggyBankIdForExpense != null) {
+                                piggyBankRepository.deductExpense(piggyBankIdForExpense, amountInCentavos, insertedId)
+                            }
+                            val warning = if (type == TransactionType.EXPENSE) currentBudgetWarning() else null
+                            _saveResults.emit(SaveTransactionResult.Success(warning, allocationSummary))
+                        } else {
+                            val existing = transactionRepository.getTransactionOnce(existingId)
+                            if (existing == null) {
+                                _saveResults.emit(SaveTransactionResult.Error("Transaction could not be found."))
+                                return@launch
+                            }
+                            val current = existing.copy(
+                                id = existingId,
                                 amount = amountInCentavos,
                                 type = type.name,
                                 categoryId = category.id,
                                 description = if (type == TransactionType.INCOME) "" else description.trim(),
                                 note = if (type == TransactionType.INCOME) null else note?.trim()?.ifBlank { null },
                                 occurredAt = occurredAt,
-                                createdAt = now,
                                 updatedAt = now
                             )
-                        )
-                        var allocationSummary: String? = null
-                        if (type == TransactionType.INCOME) {
-                            allocationSummary = incomeAllocationUseCase
-                                .allocateIncome(insertedId, amountInCentavos, occurredAt)
-                                .toSnackSummary()
-                        } else if (piggyBankIdForExpense != null) {
-                            piggyBankRepository.deductExpense(piggyBankIdForExpense, amountInCentavos, insertedId)
+                            transactionRepository.update(current)
+                            val warning = if (type == TransactionType.EXPENSE) currentBudgetWarning() else null
+                            _saveResults.emit(SaveTransactionResult.Success(warning))
                         }
-                        val warning = if (type == TransactionType.EXPENSE) currentBudgetWarning() else null
-                        _saveResults.emit(SaveTransactionResult.Success(warning, allocationSummary))
-                        return@launch
-                    } else {
-                        val existing = transactionRepository.getTransactionOnce(existingId)
-                        if (existing == null) {
-                            _saveResults.emit(SaveTransactionResult.Error("Transaction could not be found."))
-                            return@launch
-                        }
-                        val current = existing.copy(
-                            id = existingId,
-                            amount = amountInCentavos,
-                            type = type.name,
-                            categoryId = category.id,
-                            description = if (type == TransactionType.INCOME) "" else description.trim(),
-                            note = if (type == TransactionType.INCOME) null else note?.trim()?.ifBlank { null },
-                            occurredAt = occurredAt,
-                            updatedAt = now
-                        )
-                        transactionRepository.update(current)
+                    } catch (e: Exception) {
+                        _saveResults.emit(SaveTransactionResult.Error(e.message ?: "Transaction could not be saved."))
+                    } finally {
+                        _isSaving.value = false
                     }
-                    val warning = if (type == TransactionType.EXPENSE) currentBudgetWarning() else null
-                    _saveResults.emit(SaveTransactionResult.Success(warning))
                 }
             }
         }
     }
+
     fun piggyBanks() = piggyBankRepository.getActivePiggyBanks()
 
     private suspend fun currentBudgetWarning(): String? {
@@ -136,6 +149,10 @@ class AddTransactionViewModel(
                 else "You have used ${it.usagePercent}% of ${it.name}."
             }
     }
+
+    private fun java.math.BigDecimal.toCentavosOrNull(): Long? = runCatching {
+        movePointRight(2).setScale(0, java.math.RoundingMode.HALF_UP).longValueExact()
+    }.getOrNull()?.takeIf { it > 0 }
 
     private fun com.example.kitatrack.data.local.model.AllocationResult.toSnackSummary(): String? {
         if (!hasReservedMoney) return null

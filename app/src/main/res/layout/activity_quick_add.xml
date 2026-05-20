@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/kitatrack_background"
+    android:background="@drawable/kt_screen_background"
     android:fillViewport="true">
 
     <LinearLayout
@@ -88,8 +88,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="14dp"
-            app:cardBackgroundColor="@color/kitatrack_card_background"
-            app:cardCornerRadius="18dp"
+            app:cardBackgroundColor="@color/kitatrack_soft_planner_background"
+            app:cardCornerRadius="24dp"
             app:strokeColor="@color/kitatrack_subtle_border"
             app:strokeWidth="1dp">
             <TextView
@@ -127,3 +127,5 @@
             android:textAllCaps="false" />
     </LinearLayout>
 </ScrollView>
+
+

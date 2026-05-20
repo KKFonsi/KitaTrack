@@ -425,8 +425,7 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
                 }))
             }
             card.findViewById<TextView>(R.id.subscription_status).text =
-                if (sub.reserveEnabled) "Reserve On | ${Formatters.peso(sub.reservedAmount)} reserved | ${item.statusLabel}"
-                else "Reserve Off | Reminder ${if (sub.reminderEnabled) "On" else "Off"} | ${item.statusLabel}"
+                if (sub.reserveEnabled) "Reserve On" else "Reserve Off"
             card.setOnClickListener { showSubscriptionDetails(item) }
             container.addView(card)
         }
@@ -579,11 +578,11 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
             card.findViewById<TextView>(R.id.piggy_name).text = item.name
             card.findViewById<TextView>(R.id.piggy_amounts).text = "${Formatters.peso(item.currentAmount)} / ${Formatters.peso(item.targetAmount)}\n${Formatters.peso(item.remainingAmount)} remaining"
             card.findViewById<ProgressBar>(R.id.piggy_progress).progress = item.progressPercent.coerceAtMost(100)
-            card.findViewById<TextView>(R.id.piggy_meta).text = "Progress: ${item.progressPercent}% | Allocation: ${item.selectedAllocationPercent}% | ${item.statusLabel}"
+            card.findViewById<TextView>(R.id.piggy_meta).text = "${item.progressPercent}% saved | ${item.selectedAllocationPercent}% allocation | ${item.statusLabel}"
             card.findViewById<TextView>(R.id.piggy_warning).apply {
                 visibility = if (item.unresolvedMissedCount > 0) View.VISIBLE else View.GONE
                 text = if (item.unresolvedMissedCount > 0) {
-                    "${item.unresolvedMissedCount} planned contribution${if (item.unresolvedMissedCount == 1) "" else "s"} need adjustment | ${Formatters.peso(item.unresolvedMissedAmount)} missed"
+                    "${item.unresolvedMissedCount} contribution${if (item.unresolvedMissedCount == 1) "" else "s"} need adjustment"
                 } else ""
             }
             card.setOnClickListener { showPiggyDetails(item) }
@@ -859,7 +858,7 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
                 }
             card.findViewById<TextView>(R.id.budget_status).text = when {
                 !budget.isActive -> "Inactive"
-                budget.adjustedLimitAmount <= 0L && budget.reserveImpactAmount > 0L -> "No spendable budget after reserves"
+                budget.adjustedLimitAmount <= 0L && budget.reserveImpactAmount > 0L -> "No usable budget"
                 budget.isOverLimit -> "Over budget"
                 budget.isNearLimit -> "Near limit"
                 budget.reserveImpactAmount > 0L -> "${Formatters.peso(budget.reserveImpactAmount)} reserved this period"
@@ -946,3 +945,4 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
             }.show()
     }
 }
+

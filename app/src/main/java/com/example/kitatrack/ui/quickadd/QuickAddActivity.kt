@@ -58,7 +58,11 @@ class QuickAddActivity : AppCompatActivity() {
         val saveButton = findViewById<MaterialButton>(R.id.quick_save_button)
 
         title.text = if (income) "Quick Add Income" else "Quick Add Expense"
-        subtitle.text = if (income) "Income will follow your Debt → Piggy Bank → Subscription → Main Balance allocation." else "Expense will reduce Main Balance."
+        subtitle.text = if (income) {
+            "Income will follow Debt > Piggy Bank > Subscription > Main Balance allocation."
+        } else {
+            "Expense will reduce Main Balance."
+        }
         categoryLayout.hint = if (income) "Source of funds" else "Expense category"
         descriptionLayout.visibility = if (income) View.GONE else View.VISIBLE
         notesLayout.visibility = if (income) View.GONE else View.VISIBLE
@@ -116,6 +120,16 @@ class QuickAddActivity : AppCompatActivity() {
                 }
                 launch {
                     viewModel.preview.collect { allocationPreview.text = it }
+                }
+                launch {
+                    viewModel.isSaving.collect { saving ->
+                        saveButton.isEnabled = !saving
+                        saveButton.text = when {
+                            saving -> "Saving..."
+                            income -> "Save Income"
+                            else -> "Save Expense"
+                        }
+                    }
                 }
                 launch {
                     viewModel.result.collect { result ->

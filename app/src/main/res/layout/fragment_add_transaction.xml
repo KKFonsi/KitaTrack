@@ -2,12 +2,31 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent" android:layout_height="match_parent"
-    android:background="@color/kitatrack_background">
+    android:background="@drawable/kt_screen_background">
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
         android:orientation="vertical" android:padding="20dp">
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="Add Transaction" android:textColor="@color/kitatrack_primary_text"
-            android:textSize="28sp" android:textStyle="bold" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/back_button"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minWidth="0dp"
+                android:text="Back"
+                android:textAllCaps="false" />
+            <TextView
+                android:id="@+id/add_transaction_title"
+                style="@style/KitaTrackScreenTitle"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Add Transaction" />
+        </LinearLayout>
+        <TextView style="@style/KitaTrackScreenSubtitle" android:text="Record money without mixing spendable and reserved funds." />
         <com.google.android.material.button.MaterialButtonToggleGroup
             android:id="@+id/type_toggle" android:layout_width="match_parent"
             android:layout_height="wrap_content" android:layout_marginTop="20dp"
@@ -71,8 +90,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="14dp"
-            app:cardBackgroundColor="@color/kitatrack_card_background"
-            app:cardCornerRadius="18dp"
+            app:cardBackgroundColor="@color/kitatrack_soft_planner_background"
+            app:cardCornerRadius="24dp"
             app:strokeColor="@color/kitatrack_subtle_border"
             app:strokeWidth="1dp">
             <TextView
@@ -100,3 +119,6 @@
             android:textAllCaps="false" />
     </LinearLayout>
 </ScrollView>
+
+
+

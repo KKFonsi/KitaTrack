@@ -3,19 +3,18 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/kitatrack_background">
+    android:background="@drawable/kt_screen_background">
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:padding="20dp">
         <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Reports"
-            android:textColor="@color/kitatrack_primary_text"
-            android:textSize="28sp"
-            android:textStyle="bold" />
+            style="@style/KitaTrackScreenTitle"
+            android:text="Reports" />
+        <TextView
+            style="@style/KitaTrackScreenSubtitle"
+            android:text="A monthly review of where your money moved." />
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -27,7 +26,7 @@
                 style="@style/Widget.Material3.Button.TextButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="‹" />
+                android:text="&lt;" />
             <TextView
                 android:id="@+id/month_label"
                 android:layout_width="0dp"
@@ -42,7 +41,7 @@
                 style="@style/Widget.Material3.Button.TextButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="›" />
+                android:text="&gt;" />
         </LinearLayout>
         <com.google.android.material.button.MaterialButton
             android:id="@+id/current_month_button"
@@ -234,3 +233,4 @@
         </com.google.android.material.card.MaterialCardView>
     </LinearLayout>
 </ScrollView>
+

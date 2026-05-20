@@ -31,6 +31,8 @@ class QuickAddViewModel(
     val preview = _preview.asStateFlow()
     private val _result = MutableSharedFlow<QuickAddResult>()
     val result = _result.asSharedFlow()
+    private val _isSaving = MutableStateFlow(false)
+    val isSaving = _isSaving.asStateFlow()
 
     fun previewIncome(amountText: String) {
         viewModelScope.launch {
@@ -39,7 +41,10 @@ class QuickAddViewModel(
                 _preview.value = "Enter an amount to preview allocation."
                 return@launch
             }
-            val centavos = amount.movePointRight(2).setScale(0, java.math.RoundingMode.HALF_UP).longValueExact()
+            val centavos = amount.toCentavosOrNull() ?: run {
+                _preview.value = "Enter a valid amount to preview allocation."
+                return@launch
+            }
             val preview = incomeAllocationUseCase.previewIncome(centavos)
             _preview.value = buildString {
                 append("Allocation Preview\n")
@@ -55,34 +60,50 @@ class QuickAddViewModel(
 
     fun save(type: String, amountText: String, category: CategoryEntity?, description: String, date: Long, notes: String?) {
         viewModelScope.launch {
+            if (_isSaving.value) return@launch
             val amount = amountText.toBigDecimalOrNull()
             when {
-                amount == null || amount <= java.math.BigDecimal.ZERO -> _result.emit(QuickAddResult.Error("Enter an amount greater than ₱0."))
+                amount == null || amount <= java.math.BigDecimal.ZERO -> _result.emit(QuickAddResult.Error("Enter an amount greater than PHP 0."))
                 category == null -> _result.emit(QuickAddResult.Error(if (type == QuickAddActivity.TYPE_INCOME) "Choose a source of funds." else "Choose an expense category."))
                 type == QuickAddActivity.TYPE_EXPENSE && description.trim().isBlank() -> _result.emit(QuickAddResult.Error("Description is required."))
                 else -> {
-                    val now = System.currentTimeMillis()
-                    val centavos = amount.movePointRight(2).setScale(0, java.math.RoundingMode.HALF_UP).longValueExact()
-                    val txId = transactionRepository.insert(
-                        TransactionEntity(
-                            amount = centavos,
-                            type = type,
-                            categoryId = category.id,
-                            description = if (type == QuickAddActivity.TYPE_INCOME) "" else description.trim(),
-                            note = if (type == QuickAddActivity.TYPE_EXPENSE) notes?.trim()?.ifBlank { null } else null,
-                            occurredAt = date,
-                            createdAt = now,
-                            updatedAt = now
-                        )
-                    )
-                    if (type == QuickAddActivity.TYPE_INCOME) {
-                        incomeAllocationUseCase.allocateIncome(txId, centavos, date)
+                    val centavos = amount.toCentavosOrNull()
+                    if (centavos == null) {
+                        _result.emit(QuickAddResult.Error("Enter a valid amount."))
+                        return@launch
                     }
-                    _result.emit(QuickAddResult.Success(if (type == QuickAddActivity.TYPE_INCOME) "Income saved. Widget will refresh." else "Expense saved. Widget will refresh."))
+                    _isSaving.value = true
+                    try {
+                        val now = System.currentTimeMillis()
+                        val txId = transactionRepository.insert(
+                            TransactionEntity(
+                                amount = centavos,
+                                type = type,
+                                categoryId = category.id,
+                                description = if (type == QuickAddActivity.TYPE_INCOME) "" else description.trim(),
+                                note = if (type == QuickAddActivity.TYPE_EXPENSE) notes?.trim()?.ifBlank { null } else null,
+                                occurredAt = date,
+                                createdAt = now,
+                                updatedAt = now
+                            )
+                        )
+                        if (type == QuickAddActivity.TYPE_INCOME) {
+                            incomeAllocationUseCase.allocateIncome(txId, centavos, date)
+                        }
+                        _result.emit(QuickAddResult.Success(if (type == QuickAddActivity.TYPE_INCOME) "Income saved. Widget will refresh." else "Expense saved. Widget will refresh."))
+                    } catch (e: Exception) {
+                        _result.emit(QuickAddResult.Error(e.message ?: "Transaction could not be saved."))
+                    } finally {
+                        _isSaving.value = false
+                    }
                 }
             }
         }
     }
+
+    private fun java.math.BigDecimal.toCentavosOrNull(): Long? = runCatching {
+        movePointRight(2).setScale(0, java.math.RoundingMode.HALF_UP).longValueExact()
+    }.getOrNull()?.takeIf { it > 0 }
 
     class Factory(
         private val transactionRepository: TransactionRepository,

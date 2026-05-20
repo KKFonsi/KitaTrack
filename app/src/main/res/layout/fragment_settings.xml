@@ -2,19 +2,15 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/kitatrack_background">
+    android:background="@drawable/kt_screen_background">
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:padding="20dp">
         <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Settings"
-            android:textColor="@color/kitatrack_primary_text"
-            android:textSize="28sp"
-            android:textStyle="bold" />
+            style="@style/KitaTrackScreenTitle"
+            android:text="Settings" />
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

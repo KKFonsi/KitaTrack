@@ -63,12 +63,17 @@ class AddTransactionFragment : Fragment(R.layout.fragment_add_transaction) {
         val paymentPiggyInput = view.findViewById<AutoCompleteTextView>(R.id.payment_piggy_input)
         val allocationPreviewCard = view.findViewById<MaterialCardView>(R.id.allocation_preview_card)
         val allocationPreview = view.findViewById<android.widget.TextView>(R.id.allocation_preview)
+        val screenTitle = view.findViewById<android.widget.TextView>(R.id.add_transaction_title)
         val notesInput = view.findViewById<TextInputEditText>(R.id.notes_input)
         val notesLayout = view.findViewById<TextInputLayout>(R.id.notes_layout)
         val saveButton = view.findViewById<MaterialButton>(R.id.save_button)
+        view.findViewById<MaterialButton>(R.id.back_button).setOnClickListener {
+            findNavController().popBackStack()
+        }
 
         val defaultType = if (initialType == "INCOME") TransactionType.INCOME else TransactionType.EXPENSE
         typeToggle.check(if (defaultType == TransactionType.INCOME) R.id.income_button else R.id.expense_button)
+        screenTitle.text = if (defaultType == TransactionType.INCOME) "Add Income" else "Add Expense"
         dateInput.setText(Formatters.date(selectedDate))
         updateSaveButton(saveButton, defaultType)
         updateFormForType(defaultType, categoryLayout, descriptionLayout, notesLayout, categoryInput, descriptionInput, notesInput)
@@ -82,6 +87,7 @@ class AddTransactionFragment : Fragment(R.layout.fragment_add_transaction) {
         typeToggle.addOnButtonCheckedListener { _, checkedId, isChecked ->
             if (isChecked) {
                 val type = if (checkedId == R.id.income_button) TransactionType.INCOME else TransactionType.EXPENSE
+                screenTitle.text = if (type == TransactionType.INCOME) "Add Income" else "Add Expense"
                 updateSaveButton(
                     saveButton,
                     type
@@ -182,6 +188,12 @@ class AddTransactionFragment : Fragment(R.layout.fragment_add_transaction) {
                 launch {
                     viewModel.allocationPreview.collect { text ->
                         allocationPreview.text = text
+                    }
+                }
+                launch {
+                    viewModel.isSaving.collect { saving ->
+                        saveButton.isEnabled = !saving
+                        saveButton.text = if (saving) "Saving..." else if (currentType(typeToggle) == TransactionType.INCOME) "Save Income" else "Save Expense"
                     }
                 }
                 launch {

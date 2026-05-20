@@ -37,6 +37,7 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
     private val viewModel by viewModels<SettingsViewModel> { SettingsViewModel.Factory(app.backupRepository, app.appSettingsRepository, app.reminderRepository) }
     private var pendingExportContent: String? = null
     private var pendingExportSuccessMessage: String = ""
+    private var bindingSettings = false
 
     private val createCsv = registerForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
         writeExport(uri)
@@ -110,6 +111,7 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
                 viewModel.reminderSettings.collect { settings ->
+                    bindingSettings = true
                     view.findViewById<SwitchMaterial>(R.id.master_reminders_switch).isChecked = settings.remindersEnabled
                     view.findViewById<SwitchMaterial>(R.id.debt_reminders_switch).isChecked = settings.debtRemindersEnabled
                     view.findViewById<SwitchMaterial>(R.id.subscription_reminders_switch).isChecked = settings.subscriptionRemindersEnabled
@@ -118,6 +120,7 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
                     view.findViewById<SwitchMaterial>(R.id.missed_reminders_switch).isChecked = settings.missedContributionRemindersEnabled
                     view.findViewById<SwitchMaterial>(R.id.ai_monthly_summary_switch).isChecked = settings.aiSummaryEnabled
                     view.findViewById<AutoCompleteTextView>(R.id.reminder_timing_input).setText(timingLabel(settings.defaultReminderTiming), false)
+                    bindingSettings = false
                 }
             }
         }
@@ -145,15 +148,16 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         timingInput.keyListener = null
         timingInput.setOnClickListener { timingInput.showDropDown() }
         timingInput.setOnItemClickListener { _, _, pos, _ ->
+            if (bindingSettings) return@setOnItemClickListener
             viewModel.saveReminderSettings { it.copy(defaultReminderTiming = values[pos]) }
         }
-        view.findViewById<SwitchMaterial>(R.id.master_reminders_switch).setOnCheckedChangeListener { _, checked -> viewModel.saveReminderSettings { it.copy(remindersEnabled = checked) } }
-        view.findViewById<SwitchMaterial>(R.id.debt_reminders_switch).setOnCheckedChangeListener { _, checked -> viewModel.saveReminderSettings { it.copy(debtRemindersEnabled = checked) } }
-        view.findViewById<SwitchMaterial>(R.id.subscription_reminders_switch).setOnCheckedChangeListener { _, checked -> viewModel.saveReminderSettings { it.copy(subscriptionRemindersEnabled = checked) } }
-        view.findViewById<SwitchMaterial>(R.id.budget_alerts_switch).setOnCheckedChangeListener { _, checked -> viewModel.saveReminderSettings { it.copy(budgetAlertsEnabled = checked) } }
-        view.findViewById<SwitchMaterial>(R.id.piggy_reminders_switch).setOnCheckedChangeListener { _, checked -> viewModel.saveReminderSettings { it.copy(piggyBankRemindersEnabled = checked) } }
-        view.findViewById<SwitchMaterial>(R.id.missed_reminders_switch).setOnCheckedChangeListener { _, checked -> viewModel.saveReminderSettings { it.copy(missedContributionRemindersEnabled = checked) } }
-        view.findViewById<SwitchMaterial>(R.id.ai_monthly_summary_switch).setOnCheckedChangeListener { _, checked -> viewModel.saveAppSettings { it.copy(aiSummaryEnabled = checked) } }
+        view.findViewById<SwitchMaterial>(R.id.master_reminders_switch).setOnCheckedChangeListener { _, checked -> if (!bindingSettings) viewModel.saveReminderSettings { it.copy(remindersEnabled = checked) } }
+        view.findViewById<SwitchMaterial>(R.id.debt_reminders_switch).setOnCheckedChangeListener { _, checked -> if (!bindingSettings) viewModel.saveReminderSettings { it.copy(debtRemindersEnabled = checked) } }
+        view.findViewById<SwitchMaterial>(R.id.subscription_reminders_switch).setOnCheckedChangeListener { _, checked -> if (!bindingSettings) viewModel.saveReminderSettings { it.copy(subscriptionRemindersEnabled = checked) } }
+        view.findViewById<SwitchMaterial>(R.id.budget_alerts_switch).setOnCheckedChangeListener { _, checked -> if (!bindingSettings) viewModel.saveReminderSettings { it.copy(budgetAlertsEnabled = checked) } }
+        view.findViewById<SwitchMaterial>(R.id.piggy_reminders_switch).setOnCheckedChangeListener { _, checked -> if (!bindingSettings) viewModel.saveReminderSettings { it.copy(piggyBankRemindersEnabled = checked) } }
+        view.findViewById<SwitchMaterial>(R.id.missed_reminders_switch).setOnCheckedChangeListener { _, checked -> if (!bindingSettings) viewModel.saveReminderSettings { it.copy(missedContributionRemindersEnabled = checked) } }
+        view.findViewById<SwitchMaterial>(R.id.ai_monthly_summary_switch).setOnCheckedChangeListener { _, checked -> if (!bindingSettings) viewModel.saveAppSettings { it.copy(aiSummaryEnabled = checked) } }
         view.findViewById<MaterialButton>(R.id.refresh_reminders_button).setOnClickListener { viewModel.rescheduleReminders() }
     }
 

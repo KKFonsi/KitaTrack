@@ -82,7 +82,7 @@ class ReportsFragment : Fragment(R.layout.fragment_reports) {
         view.findViewById<HorizontalBarChartView>(R.id.expense_category_chart).submitData(
             items.map {
                 val percent = ((it.totalAmount * 100) / total).toInt()
-                ChartEntry("${it.name ?: "Missing category"} • ${Formatters.peso(it.totalAmount)} • $percent%", it.totalAmount)
+                ChartEntry("${it.name ?: "Missing category"} | ${Formatters.peso(it.totalAmount)} | $percent%", it.totalAmount)
             }
         )
     }
@@ -102,7 +102,7 @@ class ReportsFragment : Fragment(R.layout.fragment_reports) {
         view.findViewById<HorizontalBarChartView>(R.id.top_categories_chart).submitData(
             items.mapIndexed { index, item ->
                 val percent = ((item.totalAmount * 100) / total).toInt()
-                ChartEntry("${index + 1}. ${item.name ?: "Missing category"} • ${Formatters.peso(item.totalAmount)} • $percent%", item.totalAmount)
+                ChartEntry("${index + 1}. ${item.name ?: "Missing category"} | ${Formatters.peso(item.totalAmount)} | $percent%", item.totalAmount)
             }
         )
     }
@@ -158,10 +158,10 @@ class ReportsFragment : Fragment(R.layout.fragment_reports) {
             }
             state.isGeneratingAiSummary -> {
                 title.text = "AI Monthly Summary"
-                subtitle.text = "Generating monthly summary…"
+                subtitle.text = "Generating monthly summary..."
                 content.text = "KitaTrack is using summarized monthly numbers only. Raw transaction notes are not included."
                 button.isVisible = true
-                button.text = "Generating…"
+                button.text = "Generating..."
             }
             else -> {
                 title.text = "AI Monthly Summary"
@@ -173,3 +173,5 @@ class ReportsFragment : Fragment(R.layout.fragment_reports) {
         }
     }
 }
+
+

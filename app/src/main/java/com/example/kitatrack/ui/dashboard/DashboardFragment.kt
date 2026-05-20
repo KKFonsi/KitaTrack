@@ -2,18 +2,17 @@ package com.example.kitatrack.ui.dashboard
 
 import android.os.Bundle
 import android.view.View
+import android.widget.ProgressBar
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
 import com.example.kitatrack.KitaTrackApplication
 import com.example.kitatrack.R
-import com.example.kitatrack.ui.common.TransactionAdapter
-import com.example.kitatrack.ui.history.HistoryViewModel
+import com.example.kitatrack.data.local.model.BudgetProgress
 import com.example.kitatrack.util.Formatters
 import com.google.android.material.button.MaterialButton
 import kotlinx.coroutines.launch
@@ -23,47 +22,73 @@ class DashboardFragment : Fragment(R.layout.fragment_dashboard) {
     private val viewModel by viewModels<DashboardViewModel> {
         DashboardViewModel.Factory(app.transactionRepository, app.budgetRepository, app.piggyBankRepository, app.debtRepository, app.subscriptionRepository)
     }
-    private val balanceHelper by lazy { HistoryViewModel(app.transactionRepository) }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        val adapter = TransactionAdapter()
-        view.findViewById<RecyclerView>(R.id.recent_transactions_list).apply { layoutManager = LinearLayoutManager(requireContext()); this.adapter = adapter }
         view.findViewById<MaterialButton>(R.id.add_income_button).setOnClickListener { navigateToAddTransaction("INCOME") }
         view.findViewById<MaterialButton>(R.id.add_expense_button).setOnClickListener { navigateToAddTransaction("EXPENSE") }
+        view.findViewById<MaterialButton>(R.id.view_plans_button).setOnClickListener { findNavController().navigate(R.id.plansFragment) }
+
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
                 viewModel.uiState.collect { state ->
                     view.findViewById<TextView>(R.id.main_balance_value).text = Formatters.peso(state.mainBalance)
                     view.findViewById<TextView>(R.id.month_income_value).text = Formatters.peso(state.monthlyIncome)
                     view.findViewById<TextView>(R.id.month_expenses_value).text = Formatters.peso(state.monthlyExpenses)
-                    view.findViewById<TextView>(R.id.month_net_value).text = Formatters.peso(state.monthlyNet)
-                    view.findViewById<TextView>(R.id.highest_expense_value).text = state.highestExpense?.let { Formatters.peso(it.transaction.amount) } ?: "?0.00"
-                    view.findViewById<TextView>(R.id.top_category_value).text = state.topCategoryName ?: "—"
-                    view.findViewById<TextView>(R.id.weekly_budget_value).text = "Adjusted Weekly Budget Left: " + (state.weeklyBudget?.let { Formatters.peso(it.remainingAmount) } ?: "No active budget")
-                    view.findViewById<TextView>(R.id.monthly_budget_value).text = "Adjusted Monthly Budget Left: " + (state.monthlyBudget?.let { Formatters.peso(it.remainingAmount) } ?: "No active budget")
-                    view.findViewById<TextView>(R.id.budget_warning_value).text = state.budgetWarning ?: "Create a budget to track spending."
-                    view.findViewById<TextView>(R.id.piggy_bank_total_value).text = Formatters.peso(state.piggyBankTotal)
-                    view.findViewById<TextView>(R.id.debt_reserve_value).text = Formatters.peso(state.debtReserve)
-                    view.findViewById<TextView>(R.id.subscription_reserve_value).text = Formatters.peso(state.subscriptionReserve)
-                    view.findViewById<TextView>(R.id.total_money_tracked_value).text = Formatters.peso(state.totalMoneyTracked)
-                    view.findViewById<TextView>(R.id.debt_overview_value).text =
-                        "I owe: ${Formatters.peso(state.totalDebtIOwe)} | Reserve: ${Formatters.peso(state.debtReserve)}\nOwed to me: ${Formatters.peso(state.totalOwedToMe)} | Overdue: ${state.overdueDebtCount}\nNearest due: ${state.nearestDebtName ?: "None"}"
-                    view.findViewById<TextView>(R.id.piggy_overview_value).text =
-                        if (state.piggyBanksNeedingAdjustment > 0) {
-                            "${state.activePiggyBanks} active goals | ${state.piggyBanksNeedingAdjustment} need adjustment | ${Formatters.peso(state.missedPiggyContributionTotal)} planned savings missed"
-                        } else {
-                            "${state.activePiggyBanks} active goals | reserved savings"
-                        }
-                    view.findViewById<TextView>(R.id.subscription_overview_value).text =
-                        "Reserve: ${Formatters.peso(state.subscriptionReserve)} | Upcoming: ${state.upcomingSubscriptionCount} | Overdue: ${state.overdueSubscriptionCount}\nNext due: ${state.nextSubscriptionName ?: "None"} | Monthly estimate: ${Formatters.peso(state.monthlySubscriptionEstimate)}"
-                    view.findViewById<TextView>(R.id.recent_empty_state).visibility = if (state.recentTransactions.isEmpty()) View.VISIBLE else View.GONE
-                    val balancesById = balanceHelper.withRunningBalances(state.allTransactions).associateBy { it.item.transaction.id }
-                    adapter.submitList(state.recentTransactions.mapNotNull { balancesById[it.transaction.id] })
+                    view.findViewById<TextView>(R.id.month_net_value).apply {
+                        text = Formatters.peso(state.monthlyNet)
+                        setTextColor(ContextCompat.getColor(requireContext(), if (state.monthlyNet < 0) R.color.kitatrack_expense_red else R.color.kitatrack_primary_green))
+                    }
+                    view.findViewById<TextView>(R.id.reserved_money_summary).text =
+                        "Debt ${Formatters.peso(state.debtReserve)}  |  Piggy ${Formatters.peso(state.piggyBankTotal)}  |  Subs ${Formatters.peso(state.subscriptionReserve)}"
+                    view.findViewById<TextView>(R.id.smart_insight_value).text = smartInsight(state)
+                    view.findViewById<TextView>(R.id.obligations_value).text = obligationsText(state)
+                    renderBudgetPulse(view, state.weeklyBudget ?: state.monthlyBudget)
+                    view.findViewById<TextView>(R.id.budget_hint_value).text = state.budgetWarning ?: "Budget usage counts spending only, not reserved money."
+                    view.findViewById<TextView>(R.id.piggy_overview_value).text = when {
+                        state.piggyBanksNeedingAdjustment > 0 -> "${state.piggyBanksNeedingAdjustment} goal needs adjustment. Missed planned savings: ${Formatters.peso(state.missedPiggyContributionTotal)}."
+                        state.activePiggyBanks == 0 -> "No active goals yet. Create a piggy bank when you want to save for something specific."
+                        else -> "${state.activePiggyBanks} active goal${if (state.activePiggyBanks == 1) "" else "s"} protected."
+                    }
                 }
             }
         }
     }
+
+    private fun renderBudgetPulse(view: View, budget: BudgetProgress?) {
+        val label = view.findViewById<TextView>(R.id.budget_pulse_value)
+        val progress = view.findViewById<ProgressBar>(R.id.budget_pulse_progress)
+        if (budget == null) {
+            label.text = "No active budgets"
+            progress.progress = 0
+            return
+        }
+        label.text = "${Formatters.peso(budget.remainingAmount.coerceAtLeast(0))} left"
+        progress.progress = budget.usagePercent.coerceIn(0, 100)
+        progress.progressTintList = ContextCompat.getColorStateList(requireContext(), when {
+            budget.isOverLimit -> R.color.kitatrack_expense_red
+            budget.isNearLimit -> R.color.kitatrack_warning_yellow
+            else -> R.color.kitatrack_primary_green
+        })
+    }
+
+    private fun smartInsight(state: DashboardUiState): String = when {
+        state.budgetWarning != null -> state.budgetWarning
+        state.overdueDebtCount > 0 -> "You have ${state.overdueDebtCount} overdue debt item${if (state.overdueDebtCount == 1) "" else "s"}. Debt reserve stays protected."
+        state.overdueSubscriptionCount > 0 -> "You have ${state.overdueSubscriptionCount} overdue subscription${if (state.overdueSubscriptionCount == 1) "" else "s"}."
+        state.piggyBanksNeedingAdjustment > 0 -> "A savings goal may need a small adjustment. Missed contributions are planning gaps, not debt."
+        state.topCategoryName != null -> "${state.topCategoryName} is your top spending category this month."
+        else -> "No urgent money alerts today."
+    }
+
+    private fun obligationsText(state: DashboardUiState): String = when {
+        state.overdueDebtCount > 0 -> "${state.overdueDebtCount} overdue debt item${if (state.overdueDebtCount == 1) "" else "s"}."
+        state.nearestDebtName != null -> "Next debt: ${state.nearestDebtName}."
+        state.overdueSubscriptionCount > 0 -> "${state.overdueSubscriptionCount} overdue subscription${if (state.overdueSubscriptionCount == 1) "" else "s"}."
+        state.nextSubscriptionName != null && state.upcomingSubscriptionCount > 0 -> "${state.nextSubscriptionName} is coming up."
+        else -> "No urgent obligations."
+    }
+
     private fun navigateToAddTransaction(initialType: String) {
         findNavController().navigate(R.id.action_dashboardFragment_to_addTransactionFragment, Bundle().apply { putString("initialType", initialType) })
     }

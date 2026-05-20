@@ -100,7 +100,9 @@ class SettingsViewModel(
     fun saveReminderSettings(transform: (AppSettingsEntity) -> AppSettingsEntity) {
         viewModelScope.launch {
             val current = appSettingsRepository.getOrCreateSettings()
-            appSettingsRepository.save(transform(current))
+            val updated = transform(current)
+            if (updated == current) return@launch
+            appSettingsRepository.save(updated)
             reminderRepository.rescheduleAll()
             _uiState.value = _uiState.value.copy(message = "Reminder settings updated.")
         }
@@ -109,7 +111,9 @@ class SettingsViewModel(
     fun saveAppSettings(transform: (AppSettingsEntity) -> AppSettingsEntity) {
         viewModelScope.launch {
             val current = appSettingsRepository.getOrCreateSettings()
-            appSettingsRepository.save(transform(current))
+            val updated = transform(current)
+            if (updated == current) return@launch
+            appSettingsRepository.save(updated)
             _uiState.value = _uiState.value.copy(message = "Settings updated.")
         }
     }

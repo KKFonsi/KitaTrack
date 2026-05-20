@@ -41,9 +41,7 @@ data class DashboardUiState(
     val totalMoneyTracked: Long = 0,
     val activePiggyBanks: Int = 0,
     val piggyBanksNeedingAdjustment: Int = 0,
-    val missedPiggyContributionTotal: Long = 0,
-    val recentTransactions: List<TransactionWithCategory> = emptyList(),
-    val allTransactions: List<TransactionWithCategory> = emptyList()
+    val missedPiggyContributionTotal: Long = 0
 )
 
 class DashboardViewModel(repository: TransactionRepository, budgetRepository: BudgetRepository, piggyBankRepository: PiggyBankRepository, debtRepository: DebtRepository, subscriptionRepository: SubscriptionRepository) : ViewModel() {
@@ -56,7 +54,7 @@ class DashboardViewModel(repository: TransactionRepository, budgetRepository: Bu
         ReserveState(piggyBanks, missed, debts, subscriptions)
     }
 
-    val uiState = combine(totals, repository.getRecentTransactions(), repository.getAllTransactions(), budgetRepository.getBudgetProgress(), reserveState) { amounts, recent, all, budgets, reserves ->
+    val uiState = combine(totals, budgetRepository.getBudgetProgress(), reserveState) { amounts, budgets, reserves ->
         val piggyBanks = reserves.piggyBanks
         val missed = reserves.missed
         val debts = reserves.debts
@@ -105,9 +103,7 @@ class DashboardViewModel(repository: TransactionRepository, budgetRepository: Bu
             totalMoneyTracked = amounts.totalIncome - amounts.totalExpenses,
             activePiggyBanks = activePiggies.size,
             piggyBanksNeedingAdjustment = missed.map { it.piggyBankId }.distinct().size,
-            missedPiggyContributionTotal = missed.sumOf { it.missedAmount },
-            recentTransactions = recent,
-            allTransactions = all
+            missedPiggyContributionTotal = missed.sumOf { it.missedAmount }
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DashboardUiState())
 
