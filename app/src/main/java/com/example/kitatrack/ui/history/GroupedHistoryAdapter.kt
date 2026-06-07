@@ -9,6 +9,9 @@ import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.example.kitatrack.R
 import com.example.kitatrack.util.Formatters
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
 
 private sealed interface HistoryListItem {
     data class Header(val dateMillis: Long) : HistoryListItem
@@ -59,7 +62,18 @@ class GroupedHistoryAdapter(
 
     private class HeaderViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         fun bind(item: HistoryListItem.Header) {
-            (itemView as TextView).text = Formatters.date(item.dateMillis)
+            (itemView as TextView).text = historyHeader(item.dateMillis)
+        }
+
+        private fun historyHeader(millis: Long): String {
+            val today = Calendar.getInstance()
+            val date = Calendar.getInstance().apply { timeInMillis = millis }
+            val short = SimpleDateFormat("MMM d", Locale.US).format(date.time)
+            return if (today.get(Calendar.YEAR) == date.get(Calendar.YEAR) && today.get(Calendar.DAY_OF_YEAR) == date.get(Calendar.DAY_OF_YEAR)) {
+                "Today, $short"
+            } else {
+                short
+            }
         }
     }
 
@@ -82,10 +96,11 @@ class GroupedHistoryAdapter(
             icon.text = if (isIncome) "+" else "-"
             icon.setTextColor(accent)
             icon.backgroundTintList = ColorStateList.valueOf(iconBg)
-            meta.text = "${if (isIncome) "Income" else "Expense"} | ${row.item.categoryName ?: "Uncategorized"} | ${Formatters.shortDate(tx.occurredAt)}"
+            meta.text = row.item.categoryName ?: if (isIncome) "Income" else "Expense"
+            meta.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(itemView.context, R.color.kitatrack_elevated_card_background))
             note.visibility = if (tx.note.isNullOrBlank()) View.GONE else View.VISIBLE
             note.text = tx.note
-            balance.text = "Balance after: ${Formatters.peso(row.balanceAfter)}"
+            balance.text = "After: ${Formatters.peso(row.balanceAfter)}"
             itemView.setOnClickListener { onClick(row) }
             itemView.setOnLongClickListener {
                 onLongClick(row)

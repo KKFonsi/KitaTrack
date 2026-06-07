@@ -10,14 +10,45 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="20dp">
+        android:paddingStart="20dp"
+        android:paddingTop="18dp"
+        android:paddingEnd="20dp"
+        android:paddingBottom="24dp">
 
-        <TextView
-            style="@style/KitaTrackScreenTitle"
-            android:text="Dashboard" />
-        <TextView
-            style="@style/KitaTrackScreenSubtitle"
-            android:text="Here is what is safe to spend today." />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="KitaTrack"
+                android:textColor="@color/kitatrack_primary_text"
+                android:textSize="22sp"
+                android:textStyle="bold" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/theme_toggle_button"
+                style="@style/Widget.Material3.Button.IconButton"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:contentDescription="Toggle dark mode"
+                android:insetLeft="0dp"
+                android:insetTop="0dp"
+                android:insetRight="0dp"
+                android:insetBottom="0dp"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                app:backgroundTint="@color/kitatrack_elevated_card_background"
+                app:cornerRadius="24dp"
+                app:icon="@drawable/ic_theme_moon"
+                app:iconGravity="textStart"
+                app:iconPadding="0dp"
+                app:iconTint="@color/kitatrack_primary_text" />
+        </LinearLayout>
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
@@ -25,150 +56,153 @@
             android:layout_marginTop="18dp"
             app:cardBackgroundColor="@color/kitatrack_safe_balance_highlight"
             app:cardCornerRadius="28dp"
-            app:cardElevation="3dp"
+            app:cardElevation="0dp"
             app:strokeColor="@color/kitatrack_strong_border"
             app:strokeWidth="1dp">
+
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@drawable/kt_hero_card_background"
                 android:orientation="vertical"
                 android:padding="22dp">
-                <LinearLayout
-                    android:layout_width="match_parent"
+
+                <TextView
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
-                    <TextView
-                        android:layout_width="44dp"
-                        android:layout_height="44dp"
-                        android:background="@drawable/kt_icon_circle"
-                        android:gravity="center"
-                        android:text="PHP"
-                        android:textColor="@color/kitatrack_primary_green"
-                        android:textSize="12sp"
-                        android:textStyle="bold" />
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="12dp"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Safe to spend"
-                            android:textColor="@color/kitatrack_primary_text"
-                            android:textSize="15sp"
-                            android:textStyle="bold" />
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="After reserves and planned payments"
-                            android:textColor="@color/kitatrack_secondary_text"
-                            android:textSize="13sp" />
-                    </LinearLayout>
-                </LinearLayout>
+                    android:letterSpacing="0.08"
+                    android:text="SAFE TO SPEND"
+                    android:textColor="@color/kitatrack_primary_green"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
                 <TextView
                     android:id="@+id/main_balance_value"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    android:textColor="@color/kitatrack_primary_green"
+                    android:layout_marginTop="8dp"
+                    android:textColor="@color/kitatrack_primary_text"
                     android:textSize="36sp"
                     android:textStyle="bold" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="18dp"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/add_income_button"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:minHeight="50dp"
+                        android:text="+ Income"
+                        android:textAllCaps="false"
+                        app:backgroundTint="@color/kitatrack_primary_green"
+                        app:cornerRadius="16dp" />
+
+                    <Space
+                        android:layout_width="12dp"
+                        android:layout_height="1dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/add_expense_button"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:minHeight="50dp"
+                        android:text="- Expense"
+                        android:textAllCaps="false"
+                        app:backgroundTint="@color/kitatrack_expense_red"
+                        app:cornerRadius="16dp" />
+                </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            android:orientation="horizontal">
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/add_income_button"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:minHeight="54dp"
-                android:text="+ Income"
-                android:textAllCaps="false"
-                app:cornerRadius="28dp" />
-            <Space android:layout_width="12dp" android:layout_height="1dp" />
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/add_expense_button"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:minHeight="54dp"
-                android:text="- Expense"
-                android:textAllCaps="false"
-                app:backgroundTint="@color/kitatrack_expense_red"
-                app:cornerRadius="28dp" />
-        </LinearLayout>
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="18dp"
             app:cardBackgroundColor="@color/kitatrack_card_background"
-            app:cardCornerRadius="24dp"
+            app:cardCornerRadius="18dp"
+            app:cardElevation="0dp"
             app:strokeColor="@color/kitatrack_subtle_border"
             app:strokeWidth="1dp">
+
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:padding="18dp">
+
                 <TextView
                     style="@style/KitaTrackSectionTitle"
                     android:text="This Month" />
+
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
+                    android:layout_marginTop="14dp"
                     android:orientation="horizontal">
+
                     <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:orientation="vertical">
-                        <TextView style="@style/KitaTrackCardLabel" android:text="Income" />
-                        <TextView android:id="@+id/month_income_value" style="@style/KitaTrackCardAmount" android:textColor="@color/kitatrack_primary_green" />
+
+                        <TextView
+                            style="@style/KitaTrackCardLabel"
+                            android:text="Income" />
+
+                        <TextView
+                            android:id="@+id/month_income_value"
+                            style="@style/KitaTrackCardAmount"
+                            android:textColor="@color/kitatrack_primary_green" />
                     </LinearLayout>
+
+                    <View
+                        android:layout_width="1dp"
+                        android:layout_height="42dp"
+                        android:background="@color/kitatrack_divider" />
+
                     <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
+                        android:layout_marginStart="14dp"
                         android:layout_weight="1"
                         android:orientation="vertical">
-                        <TextView style="@style/KitaTrackCardLabel" android:text="Expenses" />
-                        <TextView android:id="@+id/month_expenses_value" style="@style/KitaTrackCardAmount" android:textColor="@color/kitatrack_expense_red" />
+
+                        <TextView
+                            style="@style/KitaTrackCardLabel"
+                            android:text="Expenses" />
+
+                        <TextView
+                            android:id="@+id/month_expenses_value"
+                            style="@style/KitaTrackCardAmount"
+                            android:textColor="@color/kitatrack_expense_red" />
                     </LinearLayout>
-                </LinearLayout>
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:layout_marginTop="12dp"
-                    android:background="@color/kitatrack_divider" />
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
-                    <TextView
+
+                    <View
+                        android:layout_width="1dp"
+                        android:layout_height="42dp"
+                        android:background="@color/kitatrack_divider" />
+
+                    <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
+                        android:layout_marginStart="14dp"
                         android:layout_weight="1"
-                        android:text="Net movement"
-                        android:textColor="@color/kitatrack_secondary_text" />
-                    <TextView
-                        android:id="@+id/month_net_value"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:textColor="@color/kitatrack_primary_green"
-                        android:textSize="18sp"
-                        android:textStyle="bold" />
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/KitaTrackCardLabel"
+                            android:text="Net" />
+
+                        <TextView
+                            android:id="@+id/month_net_value"
+                            style="@style/KitaTrackCardAmount" />
+                    </LinearLayout>
                 </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
@@ -178,138 +212,217 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="14dp"
             app:cardBackgroundColor="@color/kitatrack_soft_planner_background"
-            app:cardCornerRadius="24dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp"
             app:strokeColor="@color/kitatrack_subtle_border"
             app:strokeWidth="1dp">
-            <LinearLayout
+
+            <TextView
+                android:id="@+id/smart_insight_value"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-                <TextView
-                    style="@style/KitaTrackSectionTitle"
-                    android:text="Reserved Money" />
-                <TextView
-                    android:id="@+id/reserved_money_summary"
-                    style="@style/KitaTrackBodyText"
-                    android:layout_marginTop="8dp" />
-            </LinearLayout>
+                android:lineSpacingExtra="3dp"
+                android:padding="16dp"
+                android:textColor="@color/kitatrack_primary_text"
+                android:textSize="14sp" />
         </com.google.android.material.card.MaterialCardView>
 
-        <com.google.android.material.card.MaterialCardView
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            app:cardBackgroundColor="@color/kitatrack_soft_mint"
-            app:cardCornerRadius="24dp"
-            app:strokeColor="@color/kitatrack_subtle_border"
-            app:strokeWidth="1dp">
-            <LinearLayout
-                android:layout_width="match_parent"
+            android:layout_marginTop="22dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                style="@style/KitaTrackSectionTitle"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-                <TextView
-                    style="@style/KitaTrackSectionTitle"
-                    android:text="Smart Insight" />
-                <TextView
-                    android:id="@+id/smart_insight_value"
-                    style="@style/KitaTrackBodyText"
-                    android:layout_marginTop="8dp" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+                android:layout_weight="1"
+                android:text="Reserved Money"
+                android:textSize="20sp" />
+
+            <TextView
+                android:id="@+id/reserved_total_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/kitatrack_secondary_text"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+        <include
+            android:id="@+id/debt_reserve_card"
+            layout="@layout/item_dashboard_reserve_card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp" />
+
+        <include
+            android:id="@+id/piggy_reserve_card"
+            layout="@layout/item_dashboard_reserve_card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp" />
+
+        <include
+            android:id="@+id/subscription_reserve_card"
+            layout="@layout/item_dashboard_reserve_card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp" />
 
         <com.google.android.material.card.MaterialCardView
+            android:id="@+id/obligations_card"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="14dp"
             app:cardBackgroundColor="@color/kitatrack_soft_warning_background"
-            app:cardCornerRadius="24dp"
-            app:strokeColor="@color/kitatrack_subtle_border"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/kitatrack_warning_yellow"
             app:strokeWidth="1dp">
-            <LinearLayout
+
+            <TextView
+                android:id="@+id/obligations_value"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-                <TextView
-                    style="@style/KitaTrackSectionTitle"
-                    android:text="Upcoming Obligations" />
-                <TextView
-                    android:id="@+id/obligations_value"
-                    style="@style/KitaTrackBodyText"
-                    android:layout_marginTop="8dp" />
-            </LinearLayout>
+                android:lineSpacingExtra="3dp"
+                android:padding="16dp"
+                android:textColor="@color/kitatrack_primary_text"
+                android:textSize="14sp" />
         </com.google.android.material.card.MaterialCardView>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="22dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                style="@style/KitaTrackSectionTitle"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Budget Pulse"
+                android:textSize="20sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/view_plans_button"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:minWidth="0dp"
+                android:text="See all"
+                android:textAllCaps="false"
+                android:textColor="@color/kitatrack_primary_green" />
+        </LinearLayout>
+
+        <include
+            android:id="@+id/budget_first_card"
+            layout="@layout/item_dashboard_budget_card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp" />
+
+        <include
+            android:id="@+id/budget_second_card"
+            layout="@layout/item_dashboard_budget_card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp" />
+
+        <include
+            android:id="@+id/budget_third_card"
+            layout="@layout/item_dashboard_budget_card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp" />
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/budget_empty_card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            app:cardBackgroundColor="@color/kitatrack_card_background"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/kitatrack_subtle_border"
+            app:strokeWidth="1dp">
+
+            <TextView
+                android:id="@+id/budget_empty_value"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="16dp"
+                android:text="No active budgets"
+                android:textColor="@color/kitatrack_secondary_text"
+                android:textSize="14sp" />
+        </com.google.android.material.card.MaterialCardView>
+
+        <TextView
+            style="@style/KitaTrackSectionTitle"
+            android:layout_marginTop="22dp"
+            android:text="Savings Goal"
+            android:textSize="20sp" />
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
+            android:layout_marginTop="8dp"
             app:cardBackgroundColor="@color/kitatrack_card_background"
-            app:cardCornerRadius="24dp"
+            app:cardCornerRadius="18dp"
+            app:cardElevation="0dp"
             app:strokeColor="@color/kitatrack_subtle_border"
             app:strokeWidth="1dp">
+
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:padding="16dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/piggy_goal_name"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:textColor="@color/kitatrack_primary_text"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/piggy_goal_percent"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/kitatrack_primary_green"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
                 <TextView
-                    style="@style/KitaTrackSectionTitle"
-                    android:text="Budget Pulse" />
-                <TextView
-                    android:id="@+id/budget_pulse_value"
+                    android:id="@+id/piggy_overview_value"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:textColor="@color/kitatrack_primary_text"
-                    android:textSize="18sp"
-                    android:textStyle="bold" />
+                    android:textColor="@color/kitatrack_secondary_text"
+                    android:textSize="13sp" />
+
                 <ProgressBar
-                    android:id="@+id/budget_pulse_progress"
+                    android:id="@+id/piggy_goal_progress"
                     style="?android:attr/progressBarStyleHorizontal"
                     android:layout_width="match_parent"
                     android:layout_height="8dp"
-                    android:layout_marginTop="10dp"
+                    android:layout_marginTop="12dp"
                     android:max="100"
-                    android:progressTint="@color/kitatrack_primary_green"
-                    android:progressBackgroundTint="@color/kitatrack_divider" />
-                <TextView
-                    android:id="@+id/budget_hint_value"
-                    style="@style/KitaTrackBodyText"
-                    android:layout_marginTop="8dp" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            app:cardBackgroundColor="@color/kitatrack_soft_planner_background"
-            app:cardCornerRadius="24dp"
-            app:strokeColor="@color/kitatrack_subtle_border"
-            app:strokeWidth="1dp">
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-                <TextView
-                    style="@style/KitaTrackSectionTitle"
-                    android:text="Savings Goals" />
-                <TextView
-                    android:id="@+id/piggy_overview_value"
-                    style="@style/KitaTrackBodyText"
-                    android:layout_marginTop="8dp" />
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/view_plans_button"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:text="View Plans"
-                    android:textAllCaps="false" />
+                    android:progressBackgroundTint="@color/kitatrack_divider"
+                    android:progressTint="@color/kitatrack_primary_green" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
     </LinearLayout>

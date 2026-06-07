@@ -10,7 +10,10 @@ import com.example.kitatrack.data.repository.ReminderRepository
 import com.example.kitatrack.data.repository.RestoreMode
 import com.example.kitatrack.data.local.entity.AppSettingsEntity
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.SharingStarted
@@ -33,6 +36,8 @@ class SettingsViewModel(
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
+    private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 1)
+    val messages: SharedFlow<String> = _messages.asSharedFlow()
     val reminderSettings = appSettingsRepository.observeSettings()
         .map { it ?: AppSettingsEntity() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppSettingsEntity())
@@ -62,8 +67,9 @@ class SettingsViewModel(
             validation = validation,
             pendingBackupJson = if (validation.isValid) json else null,
             shouldConfirmRestore = validation.isValid,
-            message = validation.message
+            message = null
         )
+        _messages.tryEmit(validation.message)
     }
 
     fun restoreValidatedBackup(mode: RestoreMode) {
@@ -75,10 +81,11 @@ class SettingsViewModel(
             _uiState.value = _uiState.value.copy(
                 isLoading = false,
                 pendingBackupJson = if (result.isSuccess) null else json,
-                message = result.fold(
-                    {
-                        if (mode == RestoreMode.MERGE_NEWEST_WINS) "Backup merged successfully." else "Backup restored successfully."
-                    },
+                message = null
+            )
+            _messages.emit(
+                result.fold(
+                    { if (mode == RestoreMode.MERGE_NEWEST_WINS) "Backup merged successfully." else "Backup restored successfully." },
                     { it.message ?: "Restore failed. Your current data was not changed." }
                 )
             )
@@ -90,10 +97,8 @@ class SettingsViewModel(
             _uiState.value = _uiState.value.copy(isLoading = true, message = null)
             val result = repository.resetAllData()
             if (result.isSuccess) reminderRepository.rescheduleAll()
-            _uiState.value = _uiState.value.copy(
-                isLoading = false,
-                message = result.fold({ "All local data was reset." }, { it.message ?: "Reset failed. Your current data was not changed." })
-            )
+            _uiState.value = _uiState.value.copy(isLoading = false, message = null)
+            _messages.emit(result.fold({ "All local data was reset." }, { it.message ?: "Reset failed. Your current data was not changed." }))
         }
     }
 
@@ -104,7 +109,7 @@ class SettingsViewModel(
             if (updated == current) return@launch
             appSettingsRepository.save(updated)
             reminderRepository.rescheduleAll()
-            _uiState.value = _uiState.value.copy(message = "Reminder settings updated.")
+            _messages.emit("Reminder settings updated.")
         }
     }
 
@@ -114,14 +119,14 @@ class SettingsViewModel(
             val updated = transform(current)
             if (updated == current) return@launch
             appSettingsRepository.save(updated)
-            _uiState.value = _uiState.value.copy(message = "Settings updated.")
+            _messages.emit("Settings updated.")
         }
     }
 
     fun rescheduleReminders() {
         viewModelScope.launch {
             reminderRepository.rescheduleAll()
-            _uiState.value = _uiState.value.copy(message = "Reminders refreshed.")
+            _messages.emit("Reminders refreshed.")
         }
     }
 

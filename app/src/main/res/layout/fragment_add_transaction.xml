@@ -1,124 +1,248 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:layout_width="match_parent" android:layout_height="match_parent"
-    android:background="@drawable/kt_screen_background">
-    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:orientation="vertical" android:padding="20dp">
-        <LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/kt_screen_background"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:baselineAligned="false"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/back_button"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:insetLeft="0dp"
+            android:insetTop="0dp"
+            android:insetRight="0dp"
+            android:insetBottom="0dp"
+            android:gravity="center"
+            android:includeFontPadding="false"
+            android:minWidth="0dp"
+            android:text="‹"
+            android:textAllCaps="false"
+            android:textColor="@color/kitatrack_primary_green"
+            android:textSize="30sp" />
+
+        <TextView
+            android:id="@+id/add_transaction_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center_vertical"
+            android:includeFontPadding="false"
+            android:textColor="@color/kitatrack_primary_text"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/theme_toggle_button"
+            style="@style/Widget.Material3.Button.IconButton"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:contentDescription="Toggle dark mode"
+            android:insetLeft="0dp"
+            android:insetTop="0dp"
+            android:insetRight="0dp"
+            android:insetBottom="0dp"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            app:backgroundTint="@color/kitatrack_elevated_card_background"
+            app:cornerRadius="22dp"
+            app:icon="@drawable/ic_theme_moon"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
+            app:iconTint="@color/kitatrack_primary_text" />
+    </LinearLayout>
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/amount_card"
+        android:layout_width="match_parent"
+        android:layout_height="132dp"
+        app:cardBackgroundColor="@color/kitatrack_soft_mint"
+        app:cardCornerRadius="0dp"
+        app:cardElevation="0dp"
+        app:strokeWidth="0dp">
+
+        <TextView
+            android:id="@+id/amount_display"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:text="₱0"
+            android:textColor="@color/kitatrack_primary_green"
+            android:textSize="42sp"
+            android:textStyle="bold" />
+    </com.google.android.material.card.MaterialCardView>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:paddingStart="20dp"
+        android:paddingTop="12dp"
+        android:paddingEnd="20dp">
+
+        <TextView
+            android:id="@+id/category_prompt"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/back_button"
-                style="@style/Widget.Material3.Button.TextButton"
+            android:textColor="@color/kitatrack_secondary_text"
+            android:textSize="14sp" />
+
+        <HorizontalScrollView
+            android:layout_width="match_parent"
+            android:layout_height="42dp"
+            android:layout_marginTop="6dp"
+            android:overScrollMode="never"
+            android:scrollbars="none">
+
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/category_chip_group"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:minWidth="0dp"
-                android:text="Back"
-                android:textAllCaps="false" />
-            <TextView
-                android:id="@+id/add_transaction_title"
-                style="@style/KitaTrackScreenTitle"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Add Transaction" />
-        </LinearLayout>
-        <TextView style="@style/KitaTrackScreenSubtitle" android:text="Record money without mixing spendable and reserved funds." />
-        <com.google.android.material.button.MaterialButtonToggleGroup
-            android:id="@+id/type_toggle" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:layout_marginTop="20dp"
-            app:singleSelection="true" app:selectionRequired="true">
-            <com.google.android.material.button.MaterialButton android:id="@+id/income_button"
-                style="@style/Widget.Material3.Button.OutlinedButton"
-                android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
-                android:text="Income" android:textAllCaps="false" />
-            <com.google.android.material.button.MaterialButton android:id="@+id/expense_button"
-                style="@style/Widget.Material3.Button.OutlinedButton"
-                android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
-                android:text="Expense" android:textAllCaps="false" />
-        </com.google.android.material.button.MaterialButtonToggleGroup>
+                app:singleLine="true"
+                app:singleSelection="true" />
+        </HorizontalScrollView>
 
-        <com.google.android.material.textfield.TextInputLayout android:id="@+id/amount_layout"
-            android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="18dp"
-            android:hint="Amount">
-            <com.google.android.material.textfield.TextInputEditText android:id="@+id/amount_input"
-                android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:inputType="numberDecimal" />
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <com.google.android.material.textfield.TextInputLayout android:id="@+id/category_layout"
-            style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-            android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp"
-            android:hint="Category">
-            <AutoCompleteTextView android:id="@+id/category_input" android:layout_width="match_parent"
-                android:layout_height="wrap_content" android:inputType="none" />
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <com.google.android.material.textfield.TextInputLayout android:id="@+id/description_layout"
-            android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp"
-            android:hint="Description">
-            <com.google.android.material.textfield.TextInputEditText android:id="@+id/description_input"
-                android:layout_width="match_parent" android:layout_height="wrap_content" />
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <com.google.android.material.textfield.TextInputLayout android:id="@+id/date_layout"
-            android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp"
-            android:hint="Date">
-            <com.google.android.material.textfield.TextInputEditText android:id="@+id/date_input"
-                android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:focusable="false" android:clickable="true" />
-        </com.google.android.material.textfield.TextInputLayout>
-        <com.google.android.material.textfield.TextInputLayout android:id="@+id/payment_source_layout"
-            style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-            android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp"
-            android:hint="Pay from">
-            <AutoCompleteTextView android:id="@+id/payment_source_input" android:layout_width="match_parent"
-                android:layout_height="wrap_content" android:inputType="none"/>
-        </com.google.android.material.textfield.TextInputLayout>
-        <com.google.android.material.textfield.TextInputLayout android:id="@+id/payment_piggy_layout"
-            style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-            android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp"
-            android:hint="Piggy bank">
-            <AutoCompleteTextView android:id="@+id/payment_piggy_input" android:layout_width="match_parent"
-                android:layout_height="wrap_content" android:inputType="none"/>
-        </com.google.android.material.textfield.TextInputLayout>
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/allocation_preview_card"
+        <LinearLayout
+            android:id="@+id/context_row"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            app:cardBackgroundColor="@color/kitatrack_soft_planner_background"
-            app:cardCornerRadius="24dp"
-            app:strokeColor="@color/kitatrack_subtle_border"
-            app:strokeWidth="1dp">
+            android:layout_height="46dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/kt_card_white"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp">
+
             <TextView
-                android:id="@+id/allocation_preview"
-                android:layout_width="match_parent"
+                android:id="@+id/date_context_value"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:lineSpacingExtra="3dp"
-                android:padding="16dp"
-                android:text="Enter an income amount to preview where the money will go."
+                android:text="Today"
                 android:textColor="@color/kitatrack_secondary_text"
                 android:textSize="14sp" />
-        </com.google.android.material.card.MaterialCardView>
 
-        <com.google.android.material.textfield.TextInputLayout android:id="@+id/notes_layout"
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="•"
+                android:textColor="@color/kitatrack_muted_text" />
+
+            <TextView
+                android:id="@+id/account_context_value"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="Main Balance"
+                android:textColor="@color/kitatrack_secondary_text"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/context_change_button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Change"
+                android:textColor="@color/kitatrack_primary_green"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/note_toggle_row"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:layout_marginTop="14dp" android:hint="Notes (optional)">
-            <com.google.android.material.textfield.TextInputEditText android:id="@+id/notes_input"
-                android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:minLines="2" android:gravity="top" />
+            android:layout_height="36dp"
+            android:layout_marginTop="4dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:background="@drawable/kt_icon_circle"
+                android:gravity="center"
+                android:text="+"
+                android:textColor="@color/kitatrack_secondary_text"
+                android:textSize="17sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/note_toggle_text"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:text="Add note"
+                android:textColor="@color/kitatrack_secondary_text"
+                android:textSize="15sp" />
+        </LinearLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/notes_layout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:hint="Note (optional)"
+            android:visibility="gone">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/notes_input"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="top"
+                android:minLines="2" />
         </com.google.android.material.textfield.TextInputLayout>
 
-        <com.google.android.material.button.MaterialButton android:id="@+id/save_button"
-            android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="20dp" android:minHeight="52dp"
-            android:textAllCaps="false" />
+        <GridLayout
+            android:id="@+id/numpad_grid"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginTop="4dp"
+            android:layout_weight="1"
+            android:columnCount="3"
+            android:rowCount="4">
+
+            <Button android:id="@+id/key_1" style="@style/KitaTrackNumpadButton" android:text="1" />
+            <Button android:id="@+id/key_2" style="@style/KitaTrackNumpadButton" android:text="2" />
+            <Button android:id="@+id/key_3" style="@style/KitaTrackNumpadButton" android:text="3" />
+            <Button android:id="@+id/key_4" style="@style/KitaTrackNumpadButton" android:text="4" />
+            <Button android:id="@+id/key_5" style="@style/KitaTrackNumpadButton" android:text="5" />
+            <Button android:id="@+id/key_6" style="@style/KitaTrackNumpadButton" android:text="6" />
+            <Button android:id="@+id/key_7" style="@style/KitaTrackNumpadButton" android:text="7" />
+            <Button android:id="@+id/key_8" style="@style/KitaTrackNumpadButton" android:text="8" />
+            <Button android:id="@+id/key_9" style="@style/KitaTrackNumpadButton" android:text="9" />
+            <Button android:id="@+id/key_decimal" style="@style/KitaTrackNumpadButton" android:text="." />
+            <Button android:id="@+id/key_0" style="@style/KitaTrackNumpadButton" android:text="0" />
+            <Button android:id="@+id/key_backspace" style="@style/KitaTrackNumpadButton" android:text="⌫" />
+        </GridLayout>
     </LinearLayout>
-</ScrollView>
 
-
-
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/save_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="20dp"
+        android:layout_marginBottom="12dp"
+        android:minHeight="54dp"
+        android:textAllCaps="false"
+        android:textColor="@color/white"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        app:cornerRadius="16dp" />
+</LinearLayout>

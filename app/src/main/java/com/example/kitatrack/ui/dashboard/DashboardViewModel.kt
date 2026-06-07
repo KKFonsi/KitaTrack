@@ -26,6 +26,7 @@ data class DashboardUiState(
     val transactionCount: Int = 0,
     val weeklyBudget: BudgetProgress? = null,
     val monthlyBudget: BudgetProgress? = null,
+    val budgetPreviews: List<BudgetProgress> = emptyList(),
     val budgetWarning: String? = null,
     val piggyBankTotal: Long = 0,
     val debtReserve: Long = 0,
@@ -41,7 +42,11 @@ data class DashboardUiState(
     val totalMoneyTracked: Long = 0,
     val activePiggyBanks: Int = 0,
     val piggyBanksNeedingAdjustment: Int = 0,
-    val missedPiggyContributionTotal: Long = 0
+    val missedPiggyContributionTotal: Long = 0,
+    val piggyGoalName: String? = null,
+    val piggyGoalCurrentAmount: Long = 0,
+    val piggyGoalTargetAmount: Long = 0,
+    val piggyGoalPercent: Int = 0
 )
 
 class DashboardViewModel(repository: TransactionRepository, budgetRepository: BudgetRepository, piggyBankRepository: PiggyBankRepository, debtRepository: DebtRepository, subscriptionRepository: SubscriptionRepository) : ViewModel() {
@@ -61,6 +66,10 @@ class DashboardViewModel(repository: TransactionRepository, budgetRepository: Bu
         val subscriptions = reserves.subscriptions
         val active = budgets.filter { it.isActive }
         val activePiggies = piggyBanks.filter { it.isActive && !it.isArchived }
+        val previewPiggy = activePiggies
+            .filter { it.targetAmount > 0L }
+            .minByOrNull { ((it.currentAmount * 100.0) / it.targetAmount).toInt().coerceIn(0, 100) }
+            ?: activePiggies.firstOrNull()
         val activeDebts = debts.filter { it.isActive && !it.isArchived }
         val activeSubscriptions = subscriptions.filter { it.isActive && !it.isArchived && it.status !in setOf(SubscriptionRepository.STATUS_CANCELLED, SubscriptionRepository.STATUS_PAUSED, SubscriptionRepository.STATUS_ARCHIVED) }
         val piggyTotal = activePiggies.sumOf { it.currentAmount }
@@ -70,12 +79,13 @@ class DashboardViewModel(repository: TransactionRepository, budgetRepository: Bu
         val overdueDebts = activeDebts.filter { it.remainingAmount > 0 && it.debtType == DebtRepository.TYPE_I_OWE && (it.nextDueDate ?: it.dueDate ?: Long.MAX_VALUE) < now }
         val overdueSubscriptions = activeSubscriptions.filter { (it.nextBillingDate ?: Long.MAX_VALUE) < now }
         val upcomingSubscriptions = activeSubscriptions.filter { (it.nextBillingDate ?: Long.MAX_VALUE) >= now && (it.nextBillingDate ?: Long.MAX_VALUE) - now <= java.util.concurrent.TimeUnit.DAYS.toMillis(7) }
-        val warning = active.firstOrNull { it.isOverLimit || it.isNearLimit }?.let {
+        val prioritizedBudgets = active.sortedWith(budgetPreviewComparator())
+        val warning = prioritizedBudgets.firstOrNull { it.isOverLimit || it.isNearLimit }?.let {
             if (it.isOverLimit) "${it.name} is over budget by ${Formatters.peso(-it.remainingAmount)}."
             else "You have used ${it.usagePercent}% of ${it.name}."
-        } ?: active.firstOrNull { it.reserveImpactAmount > 0L && it.remainingAmount in 1L..5_000L }?.let {
+        } ?: prioritizedBudgets.firstOrNull { it.reserveImpactAmount > 0L && it.remainingAmount in 1L..5_000L }?.let {
             "Your allocations leave only ${Formatters.peso(it.remainingAmount)} for ${it.periodLabel.lowercase()} spending. Debt stays protected; consider lowering piggy bank or optional subscription reserves first."
-        } ?: active.firstOrNull { it.adjustedLimitAmount <= 0L && it.reserveImpactAmount > 0L }?.let {
+        } ?: prioritizedBudgets.firstOrNull { it.adjustedLimitAmount <= 0L && it.reserveImpactAmount > 0L }?.let {
             "Your current allocations leave no usable ${it.periodLabel.lowercase()} budget after reserves."
         }
         DashboardUiState(
@@ -88,6 +98,7 @@ class DashboardViewModel(repository: TransactionRepository, budgetRepository: Bu
             transactionCount = amounts.transactionCount,
             weeklyBudget = active.firstOrNull { it.budgetType == BudgetRepository.TYPE_WEEKLY_OVERALL },
             monthlyBudget = active.firstOrNull { it.budgetType == BudgetRepository.TYPE_MONTHLY_OVERALL },
+            budgetPreviews = prioritizedBudgets.take(3),
             budgetWarning = warning,
             piggyBankTotal = piggyTotal,
             debtReserve = debtReserve,
@@ -103,7 +114,14 @@ class DashboardViewModel(repository: TransactionRepository, budgetRepository: Bu
             totalMoneyTracked = amounts.totalIncome - amounts.totalExpenses,
             activePiggyBanks = activePiggies.size,
             piggyBanksNeedingAdjustment = missed.map { it.piggyBankId }.distinct().size,
-            missedPiggyContributionTotal = missed.sumOf { it.missedAmount }
+            missedPiggyContributionTotal = missed.sumOf { it.missedAmount },
+            piggyGoalName = previewPiggy?.name,
+            piggyGoalCurrentAmount = previewPiggy?.currentAmount ?: 0L,
+            piggyGoalTargetAmount = previewPiggy?.targetAmount ?: 0L,
+            piggyGoalPercent = previewPiggy
+                ?.takeIf { it.targetAmount > 0L }
+                ?.let { ((it.currentAmount * 100) / it.targetAmount).toInt().coerceIn(0, 100) }
+                ?: 0
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DashboardUiState())
 
@@ -111,6 +129,18 @@ class DashboardViewModel(repository: TransactionRepository, budgetRepository: Bu
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T = DashboardViewModel(repository, budgetRepository, piggyBankRepository, debtRepository, subscriptionRepository) as T
     }
+}
+
+private fun budgetPreviewComparator() = compareByDescending<BudgetProgress> {
+    it.isOverLimit || it.isNearLimit
+}.thenByDescending {
+    it.budgetType == BudgetRepository.TYPE_CATEGORY_WEEKLY || it.budgetType == BudgetRepository.TYPE_WEEKLY_OVERALL
+}.thenByDescending {
+    it.budgetType == BudgetRepository.TYPE_CATEGORY_WEEKLY
+}.thenByDescending {
+    it.usagePercent
+}.thenBy {
+    it.name.lowercase()
 }
 
 private data class DashboardTotals(

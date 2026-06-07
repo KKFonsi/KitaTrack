@@ -4,16 +4,19 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginBottom="10dp"
-    app:cardCornerRadius="22dp"
-    app:cardElevation="1dp"
+    app:cardBackgroundColor="@color/kitatrack_card_background"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="0dp"
     app:strokeColor="@color/kitatrack_subtle_border"
     app:strokeWidth="1dp">
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center_vertical"
         android:orientation="horizontal"
         android:padding="14dp">
+
         <TextView
             android:id="@+id/transaction_icon"
             android:layout_width="42dp"
@@ -24,12 +27,14 @@
             android:textColor="@color/kitatrack_primary_green"
             android:textSize="18sp"
             android:textStyle="bold" />
+
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="12dp"
             android:layout_weight="1"
             android:orientation="vertical">
+
             <TextView
                 android:id="@+id/transaction_title"
                 android:layout_width="match_parent"
@@ -37,36 +42,57 @@
                 android:ellipsize="end"
                 android:maxLines="1"
                 android:textColor="@color/kitatrack_primary_text"
-                android:textSize="16sp"
+                android:textSize="15sp"
                 android:textStyle="bold" />
+
             <TextView
                 android:id="@+id/transaction_meta"
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="3dp"
+                android:layout_marginTop="5dp"
+                android:background="@drawable/kt_icon_circle"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:paddingStart="8dp"
+                android:paddingTop="3dp"
+                android:paddingEnd="8dp"
+                android:paddingBottom="3dp"
                 android:textColor="@color/kitatrack_secondary_text"
-                android:textSize="13sp" />
+                android:textSize="11sp" />
+
             <TextView
                 android:id="@+id/transaction_note"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="3dp"
+                android:layout_marginTop="4dp"
+                android:ellipsize="end"
+                android:maxLines="1"
                 android:textColor="@color/kitatrack_muted_text"
-                android:textSize="13sp" />
-            <TextView
-                android:id="@+id/transaction_balance"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:textColor="@color/kitatrack_muted_text"
-                android:textSize="12sp" />
+                android:textSize="12sp"
+                android:visibility="gone" />
         </LinearLayout>
-        <TextView
-            android:id="@+id/transaction_amount"
+
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="10dp"
-            android:textSize="16sp"
-            android:textStyle="bold" />
+            android:gravity="end"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/transaction_amount"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/transaction_balance"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textColor="@color/kitatrack_muted_text"
+                android:textSize="11sp" />
+        </LinearLayout>
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

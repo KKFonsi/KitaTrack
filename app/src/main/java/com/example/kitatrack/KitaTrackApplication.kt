@@ -16,6 +16,7 @@ import com.example.kitatrack.data.repository.ReminderRepository
 import com.example.kitatrack.data.repository.SubscriptionRepository
 import com.example.kitatrack.reminders.NotificationHelper
 import com.example.kitatrack.reminders.ReminderScheduler
+import com.example.kitatrack.util.ThemePreferences
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -86,6 +87,7 @@ class KitaTrackApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        ThemePreferences.applySavedMode(this)
         NotificationHelper.createChannels(this)
         applicationScope.launch {
             categoryRepository.ensureDefaultCategories()

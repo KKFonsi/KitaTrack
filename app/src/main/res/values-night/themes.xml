@@ -11,7 +11,7 @@
         <item name="android:navigationBarColor">@color/kitatrack_bottom_nav_background</item>
         <item name="android:statusBarColor">@color/kitatrack_background</item>
         <item name="android:windowLightStatusBar">false</item>
-        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">false</item>
         <item name="android:windowBackground">@color/kitatrack_background</item>
         <item name="android:colorAccent">@color/kitatrack_primary_green</item>
         <item name="android:fontFamily">sans</item>

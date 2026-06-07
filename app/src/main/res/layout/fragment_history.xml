@@ -3,43 +3,234 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/kitatrack_background"
+    android:background="@drawable/kt_screen_background"
     android:orientation="vertical"
-    android:padding="20dp">
-    <TextView
-        style="@style/KitaTrackScreenTitle"
-        android:text="History" />
-    <TextView
-        style="@style/KitaTrackScreenSubtitle"
-        android:text="Your money flow, grouped by day." />
-    <com.google.android.material.chip.ChipGroup
-        android:id="@+id/history_filters"
+    android:paddingStart="20dp"
+    android:paddingTop="18dp"
+    android:paddingEnd="20dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="History"
+                android:textColor="@color/kitatrack_primary_text"
+                android:textSize="24sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Your money flow, grouped by day."
+                android:textColor="@color/kitatrack_secondary_text"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/history_theme_toggle_button"
+            style="@style/Widget.Material3.Button.IconButton"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:contentDescription="Toggle dark mode"
+            android:insetLeft="0dp"
+            android:insetTop="0dp"
+            android:insetRight="0dp"
+            android:insetBottom="0dp"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            app:backgroundTint="@color/kitatrack_elevated_card_background"
+            app:cornerRadius="22dp"
+            app:icon="@drawable/ic_theme_moon"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
+            app:iconTint="@color/kitatrack_primary_text" />
+    </LinearLayout>
+
+    <HorizontalScrollView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="14dp"
-        app:singleSelection="true">
-        <com.google.android.material.chip.Chip android:id="@+id/filter_all" style="@style/Widget.Material3.Chip.Filter" app:checkedIconVisible="false" app:chipCornerRadius="18dp" app:chipBackgroundColor="@color/kt_filter_chip_background" app:chipStrokeColor="@color/kitatrack_subtle_border" app:chipStrokeWidth="1dp" android:textColor="@color/kt_filter_chip_text" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="All" android:checked="true" />
-        <com.google.android.material.chip.Chip android:id="@+id/filter_income" style="@style/Widget.Material3.Chip.Filter" app:checkedIconVisible="false" app:chipCornerRadius="18dp" app:chipBackgroundColor="@color/kt_filter_chip_background" app:chipStrokeColor="@color/kitatrack_subtle_border" app:chipStrokeWidth="1dp" android:textColor="@color/kt_filter_chip_text" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Income" />
-        <com.google.android.material.chip.Chip android:id="@+id/filter_expense" style="@style/Widget.Material3.Chip.Filter" app:checkedIconVisible="false" app:chipCornerRadius="18dp" app:chipBackgroundColor="@color/kt_filter_chip_background" app:chipStrokeColor="@color/kitatrack_subtle_border" app:chipStrokeWidth="1dp" android:textColor="@color/kt_filter_chip_text" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Expense" />
-        <com.google.android.material.chip.Chip android:id="@+id/filter_this_week" style="@style/Widget.Material3.Chip.Filter" app:checkedIconVisible="false" app:chipCornerRadius="18dp" app:chipBackgroundColor="@color/kt_filter_chip_background" app:chipStrokeColor="@color/kitatrack_subtle_border" app:chipStrokeWidth="1dp" android:textColor="@color/kt_filter_chip_text" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="This Week" />
-        <com.google.android.material.chip.Chip android:id="@+id/filter_this_month" style="@style/Widget.Material3.Chip.Filter" app:checkedIconVisible="false" app:chipCornerRadius="18dp" app:chipBackgroundColor="@color/kt_filter_chip_background" app:chipStrokeColor="@color/kitatrack_subtle_border" app:chipStrokeWidth="1dp" android:textColor="@color/kt_filter_chip_text" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="This Month" />
-    </com.google.android.material.chip.ChipGroup>
+        android:overScrollMode="never"
+        android:scrollbars="none">
+
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/history_filters"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:singleLine="true"
+            app:singleSelection="true">
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/filter_all"
+                style="@style/Widget.Material3.Chip.Filter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:checked="true"
+                android:text="All"
+                android:textColor="@color/kt_filter_chip_text"
+                app:checkedIconVisible="false"
+                app:chipBackgroundColor="@color/kt_filter_chip_background"
+                app:chipCornerRadius="18dp"
+                app:chipStrokeColor="@color/kitatrack_subtle_border"
+                app:chipStrokeWidth="1dp" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/filter_income"
+                style="@style/Widget.Material3.Chip.Filter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Income"
+                android:textColor="@color/kt_filter_chip_text"
+                app:checkedIconVisible="false"
+                app:chipBackgroundColor="@color/kt_filter_chip_background"
+                app:chipCornerRadius="18dp"
+                app:chipStrokeColor="@color/kitatrack_subtle_border"
+                app:chipStrokeWidth="1dp" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/filter_expense"
+                style="@style/Widget.Material3.Chip.Filter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Expense"
+                android:textColor="@color/kt_filter_chip_text"
+                app:checkedIconVisible="false"
+                app:chipBackgroundColor="@color/kt_filter_chip_background"
+                app:chipCornerRadius="18dp"
+                app:chipStrokeColor="@color/kitatrack_subtle_border"
+                app:chipStrokeWidth="1dp" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/filter_this_week"
+                style="@style/Widget.Material3.Chip.Filter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="This Week"
+                android:textColor="@color/kt_filter_chip_text"
+                app:checkedIconVisible="false"
+                app:chipBackgroundColor="@color/kt_filter_chip_background"
+                app:chipCornerRadius="18dp"
+                app:chipStrokeColor="@color/kitatrack_subtle_border"
+                app:chipStrokeWidth="1dp" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/filter_this_month"
+                style="@style/Widget.Material3.Chip.Filter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="This Month"
+                android:textColor="@color/kt_filter_chip_text"
+                app:checkedIconVisible="false"
+                app:chipBackgroundColor="@color/kt_filter_chip_background"
+                app:chipCornerRadius="18dp"
+                app:chipStrokeColor="@color/kitatrack_subtle_border"
+                app:chipStrokeWidth="1dp" />
+        </com.google.android.material.chip.ChipGroup>
+    </HorizontalScrollView>
+
+    <com.google.android.material.card.MaterialCardView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        app:cardBackgroundColor="@color/kitatrack_card_background"
+        app:cardCornerRadius="16dp"
+        app:cardElevation="0dp"
+        app:strokeColor="@color/kitatrack_subtle_border"
+        app:strokeWidth="1dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:padding="14dp">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:orientation="vertical">
+
+                <TextView
+                    style="@style/KitaTrackCardLabel"
+                    android:text="Income"
+                    android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/history_income_value"
+                    style="@style/KitaTrackCardAmount"
+                    android:textColor="@color/kitatrack_primary_green"
+                    android:textSize="14sp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:orientation="vertical">
+
+                <TextView
+                    style="@style/KitaTrackCardLabel"
+                    android:text="Expense"
+                    android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/history_expense_value"
+                    style="@style/KitaTrackCardAmount"
+                    android:textColor="@color/kitatrack_expense_red"
+                    android:textSize="14sp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:orientation="vertical">
+
+                <TextView
+                    style="@style/KitaTrackCardLabel"
+                    android:text="Net"
+                    android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/history_net_value"
+                    style="@style/KitaTrackCardAmount"
+                    android:textSize="14sp" />
+            </LinearLayout>
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
     <TextView
         android:id="@+id/history_empty_state"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:background="@drawable/kt_card_warning"
+        android:layout_marginTop="14dp"
+        android:background="@drawable/kt_card_white"
         android:padding="18dp"
-        android:text="Nothing tracked yet. Add your first income or expense to start seeing your money flow."
-        android:textColor="@color/kitatrack_secondary_text" />
+        android:text="No transactions match this filter yet."
+        android:textColor="@color/kitatrack_secondary_text"
+        android:textSize="14sp" />
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/history_list"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_marginTop="12dp"
-        android:layout_weight="1" />
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:paddingBottom="12dp" />
 </LinearLayout>
-
-
-

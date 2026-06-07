@@ -109,5 +109,24 @@
         <item name="android:textColor">@color/kitatrack_secondary_text</item>
         <item name="android:textSize">14sp</item>
     </style>
+
+    <style name="KitaTrackNumpadButton" parent="Widget.Material3.Button.TextButton">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">0dp</item>
+        <item name="android:layout_columnWeight">1</item>
+        <item name="android:layout_rowWeight">1</item>
+        <item name="android:layout_gravity">fill</item>
+        <item name="android:layout_margin">4dp</item>
+        <item name="android:backgroundTint">@color/kitatrack_elevated_card_background</item>
+        <item name="android:textColor">@color/kitatrack_primary_text</item>
+        <item name="android:textSize">24sp</item>
+        <item name="cornerRadius">14dp</item>
+    </style>
+
+    <style name="KitaTrackSettingsDivider">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">1dp</item>
+        <item name="android:background">@color/kitatrack_divider</item>
+    </style>
 </resources>
 

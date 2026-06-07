@@ -1,6 +1,7 @@
 package com.example.kitatrack.ui.settings
 
 import android.Manifest
+import android.content.res.ColorStateList
 import android.content.pm.PackageManager
 import android.os.Build
 import android.net.Uri
@@ -23,6 +24,7 @@ import com.example.kitatrack.R
 import com.example.kitatrack.data.local.entity.ReminderEntity
 import com.example.kitatrack.data.repository.RestoreMode
 import com.example.kitatrack.reminders.NotificationHelper
+import com.example.kitatrack.util.ThemePreferences
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
@@ -63,7 +65,13 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        view.findViewById<MaterialButton>(R.id.export_csv_button).setOnClickListener {
+        bindThemeToggle(view)
+        bindActionRow(view.findViewById(R.id.export_csv_button), "CSV", "Export to CSV", "Open in Excel or Google Sheets.", R.color.kitatrack_chip_green_background, R.color.kitatrack_primary_green)
+        bindActionRow(view.findViewById(R.id.export_json_button), "↓", "Export JSON Backup", "Full backup - restores all app data.", R.color.kitatrack_soft_mint, R.color.kitatrack_primary_green)
+        bindActionRow(view.findViewById(R.id.import_json_button), "↑", "Import JSON Backup", "Merge with or replace current data.", R.color.kitatrack_chip_yellow_background, R.color.kitatrack_warning_yellow)
+        bindActionRow(view.findViewById(R.id.reset_data_button), "DEL", "Reset Local Data", "Removes everything. Cannot be undone.", R.color.kitatrack_chip_red_background, R.color.kitatrack_expense_red)
+
+        view.findViewById<View>(R.id.export_csv_button).setOnClickListener {
             viewModel.createCsv { result ->
                 result.onSuccess {
                     pendingExportContent = it
@@ -72,7 +80,7 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
                 }.onFailure { showMessage(it.message ?: "CSV export failed.") }
             }
         }
-        view.findViewById<MaterialButton>(R.id.export_json_button).setOnClickListener {
+        view.findViewById<View>(R.id.export_json_button).setOnClickListener {
             viewModel.createJson { result ->
                 result.onSuccess {
                     pendingExportContent = it
@@ -81,10 +89,10 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
                 }.onFailure { showMessage(it.message ?: "Backup export failed.") }
             }
         }
-        view.findViewById<MaterialButton>(R.id.import_json_button).setOnClickListener {
+        view.findViewById<View>(R.id.import_json_button).setOnClickListener {
             openJson.launch(arrayOf("application/json", "text/*"))
         }
-        view.findViewById<MaterialButton>(R.id.reset_data_button).setOnClickListener {
+        view.findViewById<View>(R.id.reset_data_button).setOnClickListener {
             showResetConfirmation()
         }
         setupReminderControls(view)
@@ -101,11 +109,12 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
                         viewModel.consumeRestoreConfirmation()
                         showRestoreConfirmation()
                     }
-                    state.message?.let {
-                        showMessage(it)
-                        viewModel.clearMessage()
-                    }
                 }
+            }
+        }
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
+                viewModel.messages.collect { showMessage(it) }
             }
         }
         viewLifecycleOwner.lifecycleScope.launch {
@@ -124,6 +133,34 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
                 }
             }
         }
+    }
+
+    private fun bindThemeToggle(view: View) {
+        view.findViewById<MaterialButton>(R.id.settings_theme_toggle_button).apply {
+            updateThemeToggleIcon(this)
+            setOnClickListener {
+                ThemePreferences.setDarkMode(requireContext(), !ThemePreferences.isDarkModeActive(requireContext()))
+            }
+        }
+    }
+
+    private fun updateThemeToggleIcon(button: MaterialButton) {
+        val isDark = ThemePreferences.isDarkModeActive(requireContext())
+        button.setIconResource(if (isDark) R.drawable.ic_theme_sun else R.drawable.ic_theme_moon)
+        button.contentDescription = if (isDark) "Switch to day mode" else "Switch to dark mode"
+    }
+
+    private fun bindActionRow(row: View, icon: String, title: String, description: String, iconBackground: Int, accent: Int) {
+        row.findViewById<TextView>(R.id.settings_action_icon).apply {
+            text = icon
+            setTextColor(ContextCompat.getColor(requireContext(), accent))
+            backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(requireContext(), iconBackground))
+        }
+        row.findViewById<TextView>(R.id.settings_action_title).apply {
+            text = title
+            setTextColor(ContextCompat.getColor(requireContext(), accent.takeIf { title.startsWith("Reset") } ?: R.color.kitatrack_primary_text))
+        }
+        row.findViewById<TextView>(R.id.settings_action_description).text = description
     }
 
     override fun onResume() {
@@ -163,11 +200,13 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
 
     private fun refreshPermissionStatus(view: View) {
         val allowed = NotificationHelper.canNotify(requireContext())
+        val permissionNeeded = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        view.findViewById<View>(R.id.notification_permission_banner).isVisible = !allowed
         view.findViewById<TextView>(R.id.notification_permission_value).text =
-            if (allowed) "Notifications are allowed." else "Notifications are off. Reminders will not appear until permission is allowed."
+            if (allowed) "Notifications are allowed." else "Reminders won't fire until you allow them in system settings."
         view.findViewById<MaterialButton>(R.id.request_notifications_button).isVisible =
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+            permissionNeeded
     }
 
     private fun timingLabel(value: String): String = when (value) {

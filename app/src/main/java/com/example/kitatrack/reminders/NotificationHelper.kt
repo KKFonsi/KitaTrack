@@ -43,7 +43,9 @@ object NotificationHelper {
 
     fun show(context: Context, reminder: ReminderEntity) {
         createChannels(context)
-        if (!canNotify(context)) return
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) return
         val contentIntent = PendingIntent.getActivity(
             context,
             reminder.id.toInt(),

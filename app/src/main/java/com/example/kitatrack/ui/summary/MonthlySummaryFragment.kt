@@ -30,15 +30,15 @@ class MonthlySummaryFragment : Fragment(R.layout.fragment_monthly_summary) {
                     view.findViewById<TextView>(R.id.month_label).text = state.monthLabel
                     view.findViewById<TextView>(R.id.summary_overview).text =
                         "Overview\n" +
-                            "Income: ${Formatters.peso(state.totalIncome)}\n" +
-                            "Expenses: ${Formatters.peso(state.totalExpenses)}\n" +
-                            "Net: ${Formatters.peso(state.net)}\n" +
-                            "Piggy bank allocations: ${Formatters.peso(state.piggyBankAllocations)}\n" +
-                            "Main balance impact: ${Formatters.peso(state.mainBalanceImpact)}\n" +
-                            "Highest expense: ${state.highestExpense?.let { Formatters.peso(it.transaction.amount) } ?: Formatters.peso(0)}\n" +
-                            "Top category: ${state.topCategory?.name ?: "None yet"}\n" +
-                            "Transactions: ${state.transactionCount} total | ${state.incomeCount} income | ${state.expenseCount} expense\n" +
-                            "Average daily expense: ${Formatters.peso(state.averageDailyExpense)}"
+                            "Income  ${Formatters.peso(state.totalIncome)}\n" +
+                            "Expenses  ${Formatters.peso(state.totalExpenses)}\n" +
+                            "Net movement  ${Formatters.peso(state.net)}\n\n" +
+                            "Main balance impact  ${Formatters.peso(state.mainBalanceImpact)}\n" +
+                            "Piggy bank allocations  ${Formatters.peso(state.piggyBankAllocations)}\n\n" +
+                            "Top category  ${state.topCategory?.name ?: "None yet"}\n" +
+                            "Highest expense  ${state.highestExpense?.let { Formatters.peso(it.transaction.amount) } ?: Formatters.peso(0)}\n" +
+                            "Average daily expense  ${Formatters.peso(state.averageDailyExpense)}\n" +
+                            "Transactions  ${state.transactionCount} total, ${state.incomeCount} income, ${state.expenseCount} expense"
                     view.findViewById<TextView>(R.id.income_breakdown).text =
                         "Income Sources\n" + (state.incomeSources.takeIf { it.isNotEmpty() }?.joinToString("\n") {
                             "${it.name ?: "Missing source"}: ${Formatters.peso(it.totalAmount)}"

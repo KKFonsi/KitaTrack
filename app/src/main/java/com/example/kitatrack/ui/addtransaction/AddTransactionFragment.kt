@@ -1,12 +1,14 @@
 package com.example.kitatrack.ui.addtransaction
 
 import android.app.DatePickerDialog
+import android.content.res.ColorStateList
 import android.os.Bundle
-import android.text.Editable
-import android.text.TextWatcher
 import android.view.View
-import android.widget.ArrayAdapter
-import android.widget.AutoCompleteTextView
+import android.widget.Button
+import android.widget.ProgressBar
+import android.widget.TextView
+import androidx.core.content.ContextCompat
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
@@ -15,16 +17,21 @@ import androidx.navigation.fragment.findNavController
 import com.example.kitatrack.KitaTrackApplication
 import com.example.kitatrack.R
 import com.example.kitatrack.data.local.entity.CategoryEntity
+import com.example.kitatrack.data.local.entity.PiggyBankEntity
 import com.example.kitatrack.util.Formatters
+import com.example.kitatrack.util.ThemePreferences
 import com.google.android.material.button.MaterialButton
-import com.google.android.material.button.MaterialButtonToggleGroup
 import com.google.android.material.card.MaterialCardView
+import com.google.android.material.chip.Chip
+import com.google.android.material.chip.ChipGroup
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
+import java.text.DecimalFormat
 import java.util.Calendar
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.launch
 
 class AddTransactionFragment : Fragment(R.layout.fragment_add_transaction) {
     private val app by lazy { requireActivity().application as KitaTrackApplication }
@@ -35,165 +42,77 @@ class AddTransactionFragment : Fragment(R.layout.fragment_add_transaction) {
     private var categories: List<CategoryEntity> = emptyList()
     private var expenseCategories: List<CategoryEntity> = emptyList()
     private var incomeSources: List<CategoryEntity> = emptyList()
+    private var piggyBanks: List<PiggyBankEntity> = emptyList()
     private var selectedDate: Long = System.currentTimeMillis()
     private var selectedCategory: CategoryEntity? = null
+    private var selectedPiggyBank: PiggyBankEntity? = null
     private var pendingCategoryId: Long? = null
+    private var amountText: String = "0"
     private val transactionId by lazy { arguments?.getLong("transactionId", -1L) ?: -1L }
-    private val initialType by lazy {
-        arguments?.getString("initialType", "EXPENSE")
-            ?.takeIf { it == "INCOME" || it == "EXPENSE" } ?: "EXPENSE"
+    private val screenType by lazy {
+        if (arguments?.getString("initialType", "EXPENSE") == "INCOME") TransactionType.INCOME else TransactionType.EXPENSE
     }
+    private val moneyFormat = DecimalFormat("#,##0.##")
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        val typeToggle = view.findViewById<MaterialButtonToggleGroup>(R.id.type_toggle)
-        val incomeButton = view.findViewById<MaterialButton>(R.id.income_button)
-        val expenseButton = view.findViewById<MaterialButton>(R.id.expense_button)
-        val amountLayout = view.findViewById<TextInputLayout>(R.id.amount_layout)
-        val amountInput = view.findViewById<TextInputEditText>(R.id.amount_input)
-        val categoryLayout = view.findViewById<TextInputLayout>(R.id.category_layout)
-        val categoryInput = view.findViewById<AutoCompleteTextView>(R.id.category_input)
-        val descriptionLayout = view.findViewById<TextInputLayout>(R.id.description_layout)
-        val descriptionInput = view.findViewById<TextInputEditText>(R.id.description_input)
-        val dateLayout = view.findViewById<TextInputLayout>(R.id.date_layout)
-        val dateInput = view.findViewById<TextInputEditText>(R.id.date_input)
-        val paymentSourceLayout = view.findViewById<TextInputLayout>(R.id.payment_source_layout)
-        val paymentSourceInput = view.findViewById<AutoCompleteTextView>(R.id.payment_source_input)
-        val paymentPiggyLayout = view.findViewById<TextInputLayout>(R.id.payment_piggy_layout)
-        val paymentPiggyInput = view.findViewById<AutoCompleteTextView>(R.id.payment_piggy_input)
-        val allocationPreviewCard = view.findViewById<MaterialCardView>(R.id.allocation_preview_card)
-        val allocationPreview = view.findViewById<android.widget.TextView>(R.id.allocation_preview)
-        val screenTitle = view.findViewById<android.widget.TextView>(R.id.add_transaction_title)
-        val notesInput = view.findViewById<TextInputEditText>(R.id.notes_input)
-        val notesLayout = view.findViewById<TextInputLayout>(R.id.notes_layout)
         val saveButton = view.findViewById<MaterialButton>(R.id.save_button)
-        view.findViewById<MaterialButton>(R.id.back_button).setOnClickListener {
-            findNavController().popBackStack()
+        val notesLayout = view.findViewById<TextInputLayout>(R.id.notes_layout)
+        val notesInput = view.findViewById<TextInputEditText>(R.id.notes_input)
+
+        bindTopBar(view)
+        applyScreenStyle(view, saveButton)
+        updateDateAndAccount(view)
+        updateAmountDisplay(view)
+        bindNumpad(view)
+
+        view.findViewById<View>(R.id.context_change_button).setOnClickListener { showContextActions(view) }
+        view.findViewById<View>(R.id.context_row).setOnClickListener { showContextActions(view) }
+        view.findViewById<View>(R.id.note_toggle_row).setOnClickListener {
+            notesLayout.isVisible = !notesLayout.isVisible
+            view.findViewById<TextView>(R.id.note_toggle_text).text = if (notesLayout.isVisible) "Hide note" else "Add note"
+            if (notesLayout.isVisible) notesInput.requestFocus()
         }
-
-        val defaultType = if (initialType == "INCOME") TransactionType.INCOME else TransactionType.EXPENSE
-        typeToggle.check(if (defaultType == TransactionType.INCOME) R.id.income_button else R.id.expense_button)
-        screenTitle.text = if (defaultType == TransactionType.INCOME) "Add Income" else "Add Expense"
-        dateInput.setText(Formatters.date(selectedDate))
-        updateSaveButton(saveButton, defaultType)
-        updateFormForType(defaultType, categoryLayout, descriptionLayout, notesLayout, categoryInput, descriptionInput, notesInput)
-        allocationPreviewCard.visibility = if (defaultType == TransactionType.INCOME) View.VISIBLE else View.GONE
-        if (defaultType == TransactionType.INCOME) viewModel.previewAllocation(amountInput.text?.toString().orEmpty())
-        paymentSourceInput.setAdapter(ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, listOf("Main Balance", "Piggy Bank")))
-        paymentSourceInput.setText("Main Balance", false)
-        paymentPiggyLayout.visibility = View.GONE
-        var paymentPiggyBank: com.example.kitatrack.data.local.entity.PiggyBankEntity? = null
-
-        typeToggle.addOnButtonCheckedListener { _, checkedId, isChecked ->
-            if (isChecked) {
-                val type = if (checkedId == R.id.income_button) TransactionType.INCOME else TransactionType.EXPENSE
-                screenTitle.text = if (type == TransactionType.INCOME) "Add Income" else "Add Expense"
-                updateSaveButton(
-                    saveButton,
-                    type
-                )
-                updateFormForType(type, categoryLayout, descriptionLayout, notesLayout, categoryInput, descriptionInput, notesInput)
-                renderCategories(type, categoryInput)
-                paymentSourceLayout.visibility = if (type == TransactionType.EXPENSE) View.VISIBLE else View.GONE
-                paymentPiggyLayout.visibility = View.GONE
-                allocationPreviewCard.visibility = if (type == TransactionType.INCOME) View.VISIBLE else View.GONE
-                if (type == TransactionType.INCOME) viewModel.previewAllocation(amountInput.text?.toString().orEmpty())
-            }
-        }
-        amountInput.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                if (currentType(typeToggle) == TransactionType.INCOME) {
-                    viewModel.previewAllocation(s?.toString().orEmpty())
-                }
-            }
-            override fun afterTextChanged(s: Editable?) = Unit
-        })
-        paymentSourceInput.setOnItemClickListener { _, _, position, _ ->
-            paymentPiggyLayout.visibility = if (position == 1) View.VISIBLE else View.GONE
-            if (position == 0) paymentPiggyBank = null
-        }
-
-        dateInput.setOnClickListener {
-            val calendar = Calendar.getInstance().apply { timeInMillis = selectedDate }
-            DatePickerDialog(
-                requireContext(),
-                { _, year, month, day ->
-                    selectedDate = Calendar.getInstance().apply {
-                        set(year, month, day, 12, 0, 0)
-                        set(Calendar.MILLISECOND, 0)
-                    }.timeInMillis
-                    dateInput.setText(Formatters.date(selectedDate))
-                    dateLayout.error = null
-                },
-                calendar.get(Calendar.YEAR),
-                calendar.get(Calendar.MONTH),
-                calendar.get(Calendar.DAY_OF_MONTH)
-            ).show()
-        }
-
-        categoryInput.setOnItemClickListener { _, _, position, _ ->
-            selectedCategory = categories[position]
-            categoryLayout.error = null
-        }
-
-        amountInput.setOnFocusChangeListener { _, _ -> amountLayout.error = null }
-        descriptionInput.setOnFocusChangeListener { _, _ -> descriptionLayout.error = null }
-
         saveButton.setOnClickListener {
-            val type = when (typeToggle.checkedButtonId) {
-                R.id.income_button -> TransactionType.INCOME
-                R.id.expense_button -> TransactionType.EXPENSE
-                else -> null
-            }
+            val description = if (screenType == TransactionType.EXPENSE) {
+                notesInput.text?.toString()?.trim()?.ifBlank { selectedCategory?.name.orEmpty() }.orEmpty()
+            } else ""
             viewModel.save(
                 existingId = transactionId.takeIf { it > 0 },
-                type = type,
-                amountText = amountInput.text?.toString().orEmpty(),
+                type = screenType,
+                amountText = amountText,
                 category = selectedCategory,
-                description = descriptionInput.text?.toString().orEmpty(),
+                description = description,
                 occurredAt = selectedDate,
-                note = notesInput.text?.toString()
-                , piggyBankIdForExpense = paymentPiggyBank?.id
+                note = notesInput.text?.toString(),
+                piggyBankIdForExpense = selectedPiggyBank?.id
             )
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
                 launch {
-                    combine(viewModel.expenseCategories, viewModel.incomeSources) { expenses, sources ->
-                        expenses to sources
-                    }.collect { (expenses, sources) ->
-                        expenseCategories = expenses
-                        incomeSources = sources
-                        renderCategories(currentType(typeToggle), categoryInput)
-                        pendingCategoryId?.let { id ->
-                            selectedCategory = categories.firstOrNull { it.id == id }
-                            selectedCategory?.let {
-                                categoryInput.setText(it.name, false)
-                                pendingCategoryId = null
-                            }
+                    combine(viewModel.expenseCategories, viewModel.incomeSources) { expenses, sources -> expenses to sources }
+                        .collect { (expenses, sources) ->
+                            expenseCategories = expenses
+                            incomeSources = sources
+                            renderCategoryChips(view)
                         }
-                    }
                 }
                 launch {
                     viewModel.piggyBanks().collect { banks ->
-                        paymentPiggyInput.setAdapter(ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, banks.map { it.name }))
-                        paymentPiggyInput.setOnItemClickListener { _, _, pos, _ -> paymentPiggyBank = banks[pos] }
-                        if (currentType(typeToggle) == TransactionType.INCOME) {
-                            viewModel.previewAllocation(amountInput.text?.toString().orEmpty())
-                        }
-                    }
-                }
-                launch {
-                    viewModel.allocationPreview.collect { text ->
-                        allocationPreview.text = text
+                        piggyBanks = banks
+                        updateDateAndAccount(view)
                     }
                 }
                 launch {
                     viewModel.isSaving.collect { saving ->
                         saveButton.isEnabled = !saving
-                        saveButton.text = if (saving) "Saving..." else if (currentType(typeToggle) == TransactionType.INCOME) "Save Income" else "Save Expense"
+                        saveButton.text = when {
+                            saving -> "Saving..."
+                            screenType == TransactionType.INCOME -> "Save Income"
+                            else -> "Save Expense"
+                        }
                     }
                 }
                 launch {
@@ -206,15 +125,7 @@ class AddTransactionFragment : Fragment(R.layout.fragment_add_transaction) {
                                 }
                                 findNavController().popBackStack()
                             }
-                            is SaveTransactionResult.Error -> {
-                                when {
-                                    result.message.contains("Amount") -> amountLayout.error = result.message
-                                    result.message.contains("category", ignoreCase = true) -> categoryLayout.error = result.message
-                                    result.message.contains("Description") -> descriptionLayout.error = result.message
-                                    result.message.contains("date", ignoreCase = true) -> dateLayout.error = result.message
-                                    else -> Snackbar.make(view, result.message, Snackbar.LENGTH_SHORT).show()
-                                }
-                            }
+                            is SaveTransactionResult.Error -> Snackbar.make(view, result.message, Snackbar.LENGTH_SHORT).show()
                         }
                     }
                 }
@@ -222,18 +133,14 @@ class AddTransactionFragment : Fragment(R.layout.fragment_add_transaction) {
                     launch {
                         app.transactionRepository.getTransaction(transactionId).collect { tx ->
                             tx ?: return@collect
-                            typeToggle.check(if (tx.type == "INCOME") R.id.income_button else R.id.expense_button)
-                            amountInput.setText(tx.amount.toBigDecimal().movePointLeft(2).stripTrailingZeros().toPlainString())
-                            descriptionInput.setText(tx.description)
-                            notesInput.setText(tx.note)
+                            amountText = tx.amount.toBigDecimal().movePointLeft(2).stripTrailingZeros().toPlainString()
                             selectedDate = tx.occurredAt
-                            dateInput.setText(Formatters.date(selectedDate))
                             pendingCategoryId = tx.categoryId
-                            selectedCategory = categories.firstOrNull { it.id == tx.categoryId }
-                            selectedCategory?.let {
-                                categoryInput.setText(it.name, false)
-                                pendingCategoryId = null
-                            }
+                            notesInput.setText(tx.note ?: tx.description)
+                            notesLayout.isVisible = tx.note?.isNotBlank() == true || tx.description.isNotBlank()
+                            updateAmountDisplay(view)
+                            updateDateAndAccount(view)
+                            renderCategoryChips(view)
                         }
                     }
                 }
@@ -241,47 +148,171 @@ class AddTransactionFragment : Fragment(R.layout.fragment_add_transaction) {
         }
     }
 
-    private fun updateSaveButton(button: MaterialButton, type: TransactionType) {
-        button.text = if (type == TransactionType.INCOME) "Save Income" else "Save Expense"
-        button.setBackgroundColor(
-            requireContext().getColor(
-                if (type == TransactionType.INCOME) R.color.kitatrack_primary_green else R.color.kitatrack_expense_red
-            )
-        )
-    }
-
-    private fun currentType(toggle: MaterialButtonToggleGroup): TransactionType =
-        if (toggle.checkedButtonId == R.id.income_button) TransactionType.INCOME else TransactionType.EXPENSE
-
-    private fun updateFormForType(
-        type: TransactionType,
-        categoryLayout: TextInputLayout,
-        descriptionLayout: TextInputLayout,
-        notesLayout: TextInputLayout,
-        categoryInput: AutoCompleteTextView,
-        descriptionInput: TextInputEditText,
-        notesInput: TextInputEditText
-    ) {
-        val income = type == TransactionType.INCOME
-        categoryLayout.hint = if (income) "Source of funds" else "Expense category"
-        descriptionLayout.visibility = if (income) View.GONE else View.VISIBLE
-        notesLayout.visibility = if (income) View.GONE else View.VISIBLE
-        if (income) {
-            descriptionInput.text?.clear()
-            notesInput.text?.clear()
+    private fun bindTopBar(view: View) {
+        view.findViewById<MaterialButton>(R.id.back_button).setOnClickListener { findNavController().popBackStack() }
+        view.findViewById<MaterialButton>(R.id.theme_toggle_button).apply {
+            updateThemeToggleIcon(this)
+            setOnClickListener {
+                ThemePreferences.setDarkMode(requireContext(), !ThemePreferences.isDarkModeActive(requireContext()))
+            }
         }
-        selectedCategory = null
-        categoryInput.setText("", false)
     }
 
-    private fun renderCategories(type: TransactionType, categoryInput: AutoCompleteTextView) {
-        categories = if (type == TransactionType.INCOME) incomeSources else expenseCategories
-        categoryInput.setAdapter(
-            ArrayAdapter(
-                requireContext(),
-                android.R.layout.simple_dropdown_item_1line,
-                categories.map { it.name }
-            )
-        )
+    private fun updateThemeToggleIcon(button: MaterialButton) {
+        val isDark = ThemePreferences.isDarkModeActive(requireContext())
+        button.setIconResource(if (isDark) R.drawable.ic_theme_sun else R.drawable.ic_theme_moon)
+        button.contentDescription = if (isDark) "Switch to day mode" else "Switch to dark mode"
     }
+
+    private fun applyScreenStyle(view: View, saveButton: MaterialButton) {
+        val income = screenType == TransactionType.INCOME
+        view.findViewById<TextView>(R.id.add_transaction_title).text = if (income) "Add Income" else "Add Expense"
+        view.findViewById<TextView>(R.id.category_prompt).text = if (income) "Where is this from?" else "What is this for?"
+        view.findViewById<MaterialCardView>(R.id.amount_card).setCardBackgroundColor(
+            ContextCompat.getColor(requireContext(), if (income) R.color.kitatrack_soft_mint else R.color.kitatrack_soft_danger_background)
+        )
+        view.findViewById<TextView>(R.id.amount_display).setTextColor(
+            ContextCompat.getColor(requireContext(), if (income) R.color.kitatrack_primary_green else R.color.kitatrack_expense_red)
+        )
+        saveButton.setBackgroundColor(ContextCompat.getColor(requireContext(), if (income) R.color.kitatrack_primary_green else R.color.kitatrack_expense_red))
+        saveButton.text = if (income) "Save Income" else "Save Expense"
+    }
+
+    private fun renderCategoryChips(view: View) {
+        categories = if (screenType == TransactionType.INCOME) incomeSources else expenseCategories
+        if (selectedCategory == null) {
+            selectedCategory = pendingCategoryId?.let { id -> categories.firstOrNull { it.id == id } } ?: categories.firstOrNull()
+            pendingCategoryId = null
+        }
+        val group = view.findViewById<ChipGroup>(R.id.category_chip_group)
+        group.removeAllViews()
+        categories.forEach { category ->
+            group.addView(Chip(requireContext()).apply {
+                text = category.name
+                isCheckable = true
+                isChecked = category.id == selectedCategory?.id
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                chipMinHeight = dp(38).toFloat()
+                chipStrokeWidth = dp(1).toFloat()
+                chipStrokeColor = ColorStateList.valueOf(ContextCompat.getColor(requireContext(), R.color.kitatrack_subtle_border))
+                setTextColor(ContextCompat.getColor(requireContext(), if (isChecked) R.color.white else R.color.kitatrack_secondary_text))
+                chipBackgroundColor = ColorStateList.valueOf(
+                    ContextCompat.getColor(
+                        requireContext(),
+                        when {
+                            isChecked && screenType == TransactionType.INCOME -> R.color.kitatrack_primary_green
+                            isChecked -> R.color.kitatrack_expense_red
+                            else -> R.color.kitatrack_elevated_card_background
+                        }
+                    )
+                )
+                setOnClickListener {
+                    selectedCategory = category
+                    renderCategoryChips(view)
+                }
+            })
+        }
+    }
+
+    private fun bindNumpad(view: View) {
+        mapOf(
+            R.id.key_0 to "0", R.id.key_1 to "1", R.id.key_2 to "2", R.id.key_3 to "3",
+            R.id.key_4 to "4", R.id.key_5 to "5", R.id.key_6 to "6", R.id.key_7 to "7",
+            R.id.key_8 to "8", R.id.key_9 to "9", R.id.key_decimal to "."
+        ).forEach { (id, value) ->
+            view.findViewById<Button>(id).setOnClickListener {
+                appendAmount(value)
+                updateAmountDisplay(view)
+                if (screenType == TransactionType.INCOME) viewModel.previewAllocation(amountText)
+            }
+        }
+        view.findViewById<Button>(R.id.key_backspace).setOnClickListener {
+            amountText = amountText.dropLast(1).ifBlank { "0" }
+            if (amountText == "0.") amountText = "0"
+            updateAmountDisplay(view)
+            if (screenType == TransactionType.INCOME) viewModel.previewAllocation(amountText)
+        }
+    }
+
+    private fun appendAmount(value: String) {
+        if (value == ".") {
+            if (!amountText.contains(".")) amountText += "."
+            return
+        }
+        val decimal = amountText.substringAfter(".", "")
+        if (amountText.contains(".") && decimal.length >= 2) return
+        amountText = when {
+            amountText == "0" && value != "0" -> value
+            amountText == "0" && value == "0" -> "0"
+            else -> amountText + value
+        }
+    }
+
+    private fun updateAmountDisplay(view: View) {
+        val numeric = amountText.toBigDecimalOrNull() ?: java.math.BigDecimal.ZERO
+        view.findViewById<TextView>(R.id.amount_display).text = "₱${moneyFormat.format(numeric)}"
+    }
+
+    private fun updateDateAndAccount(view: View) {
+        val today = Calendar.getInstance()
+        val selected = Calendar.getInstance().apply { timeInMillis = selectedDate }
+        view.findViewById<TextView>(R.id.date_context_value).text =
+            if (today.get(Calendar.YEAR) == selected.get(Calendar.YEAR) && today.get(Calendar.DAY_OF_YEAR) == selected.get(Calendar.DAY_OF_YEAR)) "Today"
+            else Formatters.date(selectedDate)
+        view.findViewById<TextView>(R.id.account_context_value).text =
+            selectedPiggyBank?.let { "Piggy Bank: ${it.name}" } ?: "Main Balance"
+    }
+
+    private fun showContextActions(view: View) {
+        if (screenType == TransactionType.INCOME) {
+            showDatePicker(view)
+            return
+        }
+        val labels = buildList {
+            add("Change date")
+            add("Pay from Main Balance")
+            if (piggyBanks.isNotEmpty()) add("Pay from Piggy Bank")
+        }.toTypedArray()
+        MaterialAlertDialogBuilder(requireContext())
+            .setItems(labels) { _, which ->
+                when (labels[which]) {
+                    "Change date" -> showDatePicker(view)
+                    "Pay from Main Balance" -> {
+                        selectedPiggyBank = null
+                        updateDateAndAccount(view)
+                    }
+                    "Pay from Piggy Bank" -> showPiggyBankPicker(view)
+                }
+            }
+            .show()
+    }
+
+    private fun showPiggyBankPicker(view: View) {
+        MaterialAlertDialogBuilder(requireContext())
+            .setItems(piggyBanks.map { it.name }.toTypedArray()) { _, which ->
+                selectedPiggyBank = piggyBanks[which]
+                updateDateAndAccount(view)
+            }
+            .show()
+    }
+
+    private fun showDatePicker(view: View) {
+        val calendar = Calendar.getInstance().apply { timeInMillis = selectedDate }
+        DatePickerDialog(
+            requireContext(),
+            { _, year, month, day ->
+                selectedDate = Calendar.getInstance().apply {
+                    set(year, month, day, 12, 0, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }.timeInMillis
+                updateDateAndAccount(view)
+            },
+            calendar.get(Calendar.YEAR),
+            calendar.get(Calendar.MONTH),
+            calendar.get(Calendar.DAY_OF_MONTH)
+        ).show()
+    }
+
+    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 }

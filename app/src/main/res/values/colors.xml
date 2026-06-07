@@ -5,7 +5,7 @@
     <color name="kitatrack_warning_yellow">#F5B942</color>
     <color name="kitatrack_expense_red">#D9534F</color>
     <color name="kitatrack_background">#F8FAF9</color>
-    <color name="kitatrack_secondary_background">#FFFFFFFF</color>
+    <color name="kitatrack_secondary_background">#F0F4F2</color>
     <color name="kitatrack_card_background">#FFFFFFFF</color>
     <color name="kitatrack_elevated_card_background">#FFFFFFFF</color>
     <color name="kitatrack_bottom_nav_background">#FFFFFFFF</color>
@@ -13,18 +13,20 @@
     <color name="kitatrack_secondary_text">#6B7280</color>
     <color name="kitatrack_muted_text">#9CA3AF</color>
     <color name="kitatrack_disabled_text">#9CA3AF</color>
-    <color name="kitatrack_subtle_border">#DFF5E8</color>
+    <color name="kitatrack_subtle_border">#E5E7EB</color>
     <color name="kitatrack_strong_border">#B9E8CD</color>
-    <color name="kitatrack_divider">#DFF5E8</color>
+    <color name="kitatrack_divider">#E5E7EB</color>
     <color name="kitatrack_deep_green_accent">#1F7A4D</color>
-    <color name="kitatrack_safe_balance_highlight">#EAF8F0</color>
+    <color name="kitatrack_safe_balance_highlight">#DFF5E8</color>
     <color name="kitatrack_soft_warning_background">#FFF8E5</color>
     <color name="kitatrack_soft_danger_background">#FCEAEA</color>
     <color name="kitatrack_soft_subscription_background">#F0F7F3</color>
-    <color name="kitatrack_soft_planner_background">#F4FFF8</color>
+    <color name="kitatrack_soft_planner_background">#F0F4F2</color>
     <color name="kitatrack_chip_green_background">#DFF5E8</color>
     <color name="kitatrack_chip_yellow_background">#FFF1C7</color>
     <color name="kitatrack_chip_red_background">#FCEAEA</color>
+    <color name="kitatrack_ai_purple">#8B5CF6</color>
+    <color name="kitatrack_soft_ai_background">#F1EAFF</color>
     <color name="kitatrack_on_accent">#FFFFFFFF</color>
     <color name="white">#FFFFFFFF</color>
 </resources>

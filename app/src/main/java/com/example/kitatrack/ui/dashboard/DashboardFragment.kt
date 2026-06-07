@@ -5,6 +5,7 @@ import android.view.View
 import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.core.content.ContextCompat
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
@@ -14,6 +15,7 @@ import com.example.kitatrack.KitaTrackApplication
 import com.example.kitatrack.R
 import com.example.kitatrack.data.local.model.BudgetProgress
 import com.example.kitatrack.util.Formatters
+import com.example.kitatrack.util.ThemePreferences
 import com.google.android.material.button.MaterialButton
 import kotlinx.coroutines.launch
 
@@ -25,6 +27,7 @@ class DashboardFragment : Fragment(R.layout.fragment_dashboard) {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        bindThemeToggle(view)
         view.findViewById<MaterialButton>(R.id.add_income_button).setOnClickListener { navigateToAddTransaction("INCOME") }
         view.findViewById<MaterialButton>(R.id.add_expense_button).setOnClickListener { navigateToAddTransaction("EXPENSE") }
         view.findViewById<MaterialButton>(R.id.view_plans_button).setOnClickListener { findNavController().navigate(R.id.plansFragment) }
@@ -39,37 +42,117 @@ class DashboardFragment : Fragment(R.layout.fragment_dashboard) {
                         text = Formatters.peso(state.monthlyNet)
                         setTextColor(ContextCompat.getColor(requireContext(), if (state.monthlyNet < 0) R.color.kitatrack_expense_red else R.color.kitatrack_primary_green))
                     }
-                    view.findViewById<TextView>(R.id.reserved_money_summary).text =
-                        "Debt ${Formatters.peso(state.debtReserve)}  |  Piggy ${Formatters.peso(state.piggyBankTotal)}  |  Subs ${Formatters.peso(state.subscriptionReserve)}"
                     view.findViewById<TextView>(R.id.smart_insight_value).text = smartInsight(state)
-                    view.findViewById<TextView>(R.id.obligations_value).text = obligationsText(state)
-                    renderBudgetPulse(view, state.weeklyBudget ?: state.monthlyBudget)
-                    view.findViewById<TextView>(R.id.budget_hint_value).text = state.budgetWarning ?: "Budget usage counts spending only, not reserved money."
-                    view.findViewById<TextView>(R.id.piggy_overview_value).text = when {
-                        state.piggyBanksNeedingAdjustment > 0 -> "${state.piggyBanksNeedingAdjustment} goal needs adjustment. Missed planned savings: ${Formatters.peso(state.missedPiggyContributionTotal)}."
-                        state.activePiggyBanks == 0 -> "No active goals yet. Create a piggy bank when you want to save for something specific."
-                        else -> "${state.activePiggyBanks} active goal${if (state.activePiggyBanks == 1) "" else "s"} protected."
-                    }
+                    renderReservedMoney(view, state)
+                    renderObligations(view, state)
+                    renderBudgetPulse(view, state.budgetPreviews)
+                    renderPiggyPreview(view, state)
                 }
             }
         }
     }
 
-    private fun renderBudgetPulse(view: View, budget: BudgetProgress?) {
-        val label = view.findViewById<TextView>(R.id.budget_pulse_value)
-        val progress = view.findViewById<ProgressBar>(R.id.budget_pulse_progress)
-        if (budget == null) {
-            label.text = "No active budgets"
-            progress.progress = 0
-            return
+    private fun bindThemeToggle(view: View) {
+        view.findViewById<MaterialButton>(R.id.theme_toggle_button).apply {
+            updateThemeToggleIcon(this)
+            setOnClickListener {
+                ThemePreferences.setDarkMode(requireContext(), !ThemePreferences.isDarkModeActive(requireContext()))
+            }
         }
-        label.text = "${Formatters.peso(budget.remainingAmount.coerceAtLeast(0))} left"
+    }
+
+    private fun updateThemeToggleIcon(button: MaterialButton) {
+        val isDark = ThemePreferences.isDarkModeActive(requireContext())
+        button.setIconResource(if (isDark) R.drawable.ic_theme_sun else R.drawable.ic_theme_moon)
+        button.contentDescription = if (isDark) "Switch to day mode" else "Switch to dark mode"
+    }
+
+    private fun renderReservedMoney(view: View, state: DashboardUiState) {
+        val totalReserved = state.debtReserve + state.piggyBankTotal + state.subscriptionReserve
+        view.findViewById<TextView>(R.id.reserved_total_value).text = "${Formatters.peso(totalReserved)} total"
+        bindReserveCard(
+            view.findViewById(R.id.debt_reserve_card),
+            icon = "D",
+            title = "Debt Reserve",
+            subtitle = "Locked for payment",
+            amount = state.debtReserve
+        )
+        bindReserveCard(
+            view.findViewById(R.id.piggy_reserve_card),
+            icon = "P",
+            title = "Piggy Bank",
+            subtitle = "Locked for savings goals",
+            amount = state.piggyBankTotal
+        )
+        bindReserveCard(
+            view.findViewById(R.id.subscription_reserve_card),
+            icon = "S",
+            title = "Subscriptions",
+            subtitle = "Reserved bills only",
+            amount = state.subscriptionReserve
+        )
+    }
+
+    private fun bindReserveCard(card: View, icon: String, title: String, subtitle: String, amount: Long) {
+        card.findViewById<TextView>(R.id.reserve_icon).text = icon
+        card.findViewById<TextView>(R.id.reserve_title).text = title
+        card.findViewById<TextView>(R.id.reserve_subtitle).text = subtitle
+        card.findViewById<TextView>(R.id.reserve_amount).text = Formatters.peso(amount)
+    }
+
+    private fun renderObligations(view: View, state: DashboardUiState) {
+        val text = obligationsText(state)
+        view.findViewById<View>(R.id.obligations_card).isVisible = text != null
+        view.findViewById<TextView>(R.id.obligations_value).text = text.orEmpty()
+    }
+
+    private fun renderBudgetPulse(view: View, budgets: List<BudgetProgress>) {
+        val cards = listOf<View>(
+            view.findViewById(R.id.budget_first_card),
+            view.findViewById(R.id.budget_second_card),
+            view.findViewById(R.id.budget_third_card)
+        )
+        cards.forEachIndexed { index, card ->
+            val budget = budgets.getOrNull(index)
+            card.isVisible = budget != null
+            if (budget != null) bindBudgetCard(card, budget)
+        }
+        view.findViewById<View>(R.id.budget_empty_card).isVisible = budgets.isEmpty()
+        view.findViewById<TextView>(R.id.budget_empty_value).text =
+            "No active budgets. Budgets measure spending only; reserved money stays separate."
+    }
+
+    private fun bindBudgetCard(card: View, budget: BudgetProgress) {
+        card.findViewById<TextView>(R.id.budget_card_title).text = budget.name
+        card.findViewById<TextView>(R.id.budget_card_subtitle).text = budgetSubtitle(budget)
+        card.findViewById<TextView>(R.id.budget_card_percent).text = "${budget.usagePercent.coerceIn(0, 999)}% used"
+        card.findViewById<TextView>(R.id.budget_card_remaining).text =
+            "${Formatters.peso(budget.remainingAmount.coerceAtLeast(0))} left in ${budget.periodLabel.lowercase()} spending."
+        val progress = card.findViewById<ProgressBar>(R.id.budget_card_progress)
         progress.progress = budget.usagePercent.coerceIn(0, 100)
         progress.progressTintList = ContextCompat.getColorStateList(requireContext(), when {
             budget.isOverLimit -> R.color.kitatrack_expense_red
             budget.isNearLimit -> R.color.kitatrack_warning_yellow
             else -> R.color.kitatrack_primary_green
         })
+    }
+
+    private fun budgetSubtitle(budget: BudgetProgress): String =
+        budget.categoryName
+            ?.takeUnless { it.equals(budget.name, ignoreCase = true) }
+            ?.let { "$it - ${budget.periodLabel}" }
+            ?: budget.periodLabel
+
+    private fun renderPiggyPreview(view: View, state: DashboardUiState) {
+        view.findViewById<TextView>(R.id.piggy_goal_name).text = state.piggyGoalName ?: "No active goal yet"
+        view.findViewById<TextView>(R.id.piggy_goal_percent).text =
+            if (state.piggyGoalName == null) "" else "${state.piggyGoalPercent}%"
+        view.findViewById<TextView>(R.id.piggy_overview_value).text = when {
+            state.piggyGoalName == null -> "Create a piggy bank from Plans when you want to reserve money for a goal."
+            state.piggyGoalTargetAmount > 0 -> "${Formatters.peso(state.piggyGoalCurrentAmount)} of ${Formatters.peso(state.piggyGoalTargetAmount)} saved"
+            else -> "${Formatters.peso(state.piggyGoalCurrentAmount)} reserved"
+        }
+        view.findViewById<ProgressBar>(R.id.piggy_goal_progress).progress = state.piggyGoalPercent
     }
 
     private fun smartInsight(state: DashboardUiState): String = when {
@@ -81,12 +164,11 @@ class DashboardFragment : Fragment(R.layout.fragment_dashboard) {
         else -> "No urgent money alerts today."
     }
 
-    private fun obligationsText(state: DashboardUiState): String = when {
+    private fun obligationsText(state: DashboardUiState): String? = when {
         state.overdueDebtCount > 0 -> "${state.overdueDebtCount} overdue debt item${if (state.overdueDebtCount == 1) "" else "s"}."
-        state.nearestDebtName != null -> "Next debt: ${state.nearestDebtName}."
         state.overdueSubscriptionCount > 0 -> "${state.overdueSubscriptionCount} overdue subscription${if (state.overdueSubscriptionCount == 1) "" else "s"}."
         state.nextSubscriptionName != null && state.upcomingSubscriptionCount > 0 -> "${state.nextSubscriptionName} is coming up."
-        else -> "No urgent obligations."
+        else -> null
     }
 
     private fun navigateToAddTransaction(initialType: String) {
