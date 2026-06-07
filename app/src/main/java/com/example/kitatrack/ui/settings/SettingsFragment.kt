@@ -49,19 +49,19 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         writeExport(uri)
     }
     private val openJson = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        uri ?: return@registerForActivityResult showMessage("Restore cancelled.")
+        uri ?: return@registerForActivityResult showMessage("No backup file selected.")
         runCatching {
             requireContext().contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
                 ?: error("File could not be opened.")
         }.onSuccess { json ->
             viewModel.validateBackup(displayName(uri), json)
         }.onFailure {
-            showMessage(it.message ?: "Invalid backup file selected.")
+            showMessage("Invalid backup file.")
         }
     }
     private val notificationPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) {
         refreshPermissionStatus(requireView())
-        if (it) viewModel.rescheduleReminders() else showMessage("Notifications are off. KitaTrack can still track your data, but reminders will not appear until notifications are allowed.")
+        if (it) viewModel.rescheduleReminders() else showMessage("Notifications are off.")
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -76,18 +76,18 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
             viewModel.createCsv { result ->
                 result.onSuccess {
                     pendingExportContent = it
-                    pendingExportSuccessMessage = "CSV exported successfully."
+                    pendingExportSuccessMessage = "CSV exported."
                     createCsv.launch("kitatrack_transactions_${dateStamp()}.csv")
-                }.onFailure { showMessage(it.message ?: "CSV export failed.") }
+                }.onFailure { showMessage("Export failed.") }
             }
         }
         view.findViewById<View>(R.id.export_json_button).setOnClickListener {
             viewModel.createJson { result ->
                 result.onSuccess {
                     pendingExportContent = it
-                    pendingExportSuccessMessage = "Backup exported successfully."
+                    pendingExportSuccessMessage = "Backup exported."
                     createJson.launch("kitatrack_backup_${dateStamp()}.json")
-                }.onFailure { showMessage(it.message ?: "Backup export failed.") }
+                }.onFailure { showMessage("Export failed.") }
             }
         }
         view.findViewById<View>(R.id.import_json_button).setOnClickListener {
@@ -175,7 +175,7 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
             } else {
-                showMessage("Notifications are already available on this Android version.")
+                showMessage("Notifications are already available.")
             }
         }
         val timingInput = view.findViewById<AutoCompleteTextView>(R.id.reminder_timing_input)
@@ -224,7 +224,7 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
             requireContext().contentResolver.openOutputStream(uri)?.bufferedWriter(Charsets.UTF_8)?.use { it.write(content) }
                 ?: error("File could not be created.")
         }.onSuccess { showMessage(pendingExportSuccessMessage) }
-            .onFailure { showMessage(it.message ?: "Export failed.") }
+            .onFailure { showMessage("Export failed.") }
         pendingExportContent = null
     }
 

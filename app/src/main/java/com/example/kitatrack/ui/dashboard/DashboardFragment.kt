@@ -2,6 +2,7 @@ package com.example.kitatrack.ui.dashboard
 
 import android.os.Bundle
 import android.view.View
+import android.widget.ImageView
 import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.core.content.ContextCompat
@@ -14,8 +15,10 @@ import androidx.navigation.fragment.findNavController
 import com.example.kitatrack.KitaTrackApplication
 import com.example.kitatrack.R
 import com.example.kitatrack.data.local.model.BudgetProgress
+import com.example.kitatrack.util.CategoryIconMapper
 import com.example.kitatrack.util.Formatters
 import com.example.kitatrack.util.ThemePreferences
+import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.button.MaterialButton
 import kotlinx.coroutines.launch
 
@@ -30,7 +33,7 @@ class DashboardFragment : Fragment(R.layout.fragment_dashboard) {
         bindThemeToggle(view)
         view.findViewById<MaterialButton>(R.id.add_income_button).setOnClickListener { navigateToAddTransaction("INCOME") }
         view.findViewById<MaterialButton>(R.id.add_expense_button).setOnClickListener { navigateToAddTransaction("EXPENSE") }
-        view.findViewById<MaterialButton>(R.id.view_plans_button).setOnClickListener { findNavController().navigate(R.id.plansFragment) }
+        view.findViewById<MaterialButton>(R.id.view_plans_button).setOnClickListener { navigateToPlansTab() }
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
@@ -42,7 +45,7 @@ class DashboardFragment : Fragment(R.layout.fragment_dashboard) {
                         text = Formatters.peso(state.monthlyNet)
                         setTextColor(ContextCompat.getColor(requireContext(), if (state.monthlyNet < 0) R.color.kitatrack_expense_red else R.color.kitatrack_primary_green))
                     }
-                    view.findViewById<TextView>(R.id.smart_insight_value).text = smartInsight(state)
+                    view.findViewById<TextView>(R.id.smart_insight_value).text = state.dashboardInsight
                     renderReservedMoney(view, state)
                     renderObligations(view, state)
                     renderBudgetPulse(view, state.budgetPreviews)
@@ -72,29 +75,29 @@ class DashboardFragment : Fragment(R.layout.fragment_dashboard) {
         view.findViewById<TextView>(R.id.reserved_total_value).text = "${Formatters.peso(totalReserved)} total"
         bindReserveCard(
             view.findViewById(R.id.debt_reserve_card),
-            icon = "D",
+            icon = R.drawable.ic_plans_debt,
             title = "Debt Reserve",
             subtitle = "Locked for payment",
             amount = state.debtReserve
         )
         bindReserveCard(
             view.findViewById(R.id.piggy_reserve_card),
-            icon = "P",
+            icon = R.drawable.ic_plans_piggy_bank,
             title = "Piggy Bank",
             subtitle = "Locked for savings goals",
             amount = state.piggyBankTotal
         )
         bindReserveCard(
             view.findViewById(R.id.subscription_reserve_card),
-            icon = "S",
+            icon = R.drawable.ic_plans_subscription,
             title = "Subscriptions",
             subtitle = "Reserved bills only",
             amount = state.subscriptionReserve
         )
     }
 
-    private fun bindReserveCard(card: View, icon: String, title: String, subtitle: String, amount: Long) {
-        card.findViewById<TextView>(R.id.reserve_icon).text = icon
+    private fun bindReserveCard(card: View, icon: Int, title: String, subtitle: String, amount: Long) {
+        card.findViewById<ImageView>(R.id.reserve_icon).setImageResource(icon)
         card.findViewById<TextView>(R.id.reserve_title).text = title
         card.findViewById<TextView>(R.id.reserve_subtitle).text = subtitle
         card.findViewById<TextView>(R.id.reserve_amount).text = Formatters.peso(amount)
@@ -123,6 +126,8 @@ class DashboardFragment : Fragment(R.layout.fragment_dashboard) {
     }
 
     private fun bindBudgetCard(card: View, budget: BudgetProgress) {
+        card.findViewById<ImageView>(R.id.budget_card_icon)
+            .setImageResource(budget.categoryName?.let { CategoryIconMapper.expenseIconFor(it) } ?: R.drawable.ic_plans_budget)
         card.findViewById<TextView>(R.id.budget_card_title).text = budget.name
         card.findViewById<TextView>(R.id.budget_card_subtitle).text = budgetSubtitle(budget)
         card.findViewById<TextView>(R.id.budget_card_percent).text = "${budget.usagePercent.coerceIn(0, 999)}% used"
@@ -155,15 +160,6 @@ class DashboardFragment : Fragment(R.layout.fragment_dashboard) {
         view.findViewById<ProgressBar>(R.id.piggy_goal_progress).progress = state.piggyGoalPercent
     }
 
-    private fun smartInsight(state: DashboardUiState): String = when {
-        state.budgetWarning != null -> state.budgetWarning
-        state.overdueDebtCount > 0 -> "You have ${state.overdueDebtCount} overdue debt item${if (state.overdueDebtCount == 1) "" else "s"}. Debt reserve stays protected."
-        state.overdueSubscriptionCount > 0 -> "You have ${state.overdueSubscriptionCount} overdue subscription${if (state.overdueSubscriptionCount == 1) "" else "s"}."
-        state.piggyBanksNeedingAdjustment > 0 -> "A savings goal may need a small adjustment. Missed contributions are planning gaps, not debt."
-        state.topCategoryName != null -> "${state.topCategoryName} is your top spending category this month."
-        else -> "No urgent money alerts today."
-    }
-
     private fun obligationsText(state: DashboardUiState): String? = when {
         state.overdueDebtCount > 0 -> "${state.overdueDebtCount} overdue debt item${if (state.overdueDebtCount == 1) "" else "s"}."
         state.overdueSubscriptionCount > 0 -> "${state.overdueSubscriptionCount} overdue subscription${if (state.overdueSubscriptionCount == 1) "" else "s"}."
@@ -173,5 +169,9 @@ class DashboardFragment : Fragment(R.layout.fragment_dashboard) {
 
     private fun navigateToAddTransaction(initialType: String) {
         findNavController().navigate(R.id.action_dashboardFragment_to_addTransactionFragment, Bundle().apply { putString("initialType", initialType) })
+    }
+
+    private fun navigateToPlansTab() {
+        requireActivity().findViewById<BottomNavigationView>(R.id.bottom_navigation).selectedItemId = R.id.plansFragment
     }
 }

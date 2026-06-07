@@ -4,7 +4,7 @@
     <color name="kitatrack_deep_green_accent">#22C55E</color>
     <color name="kitatrack_soft_mint">#1F3D2C</color>
     <color name="kitatrack_safe_balance_highlight">#1F3D2C</color>
-    <color name="kitatrack_history_summary_background">#182A20</color>
+    <color name="kitatrack_history_summary_background">#203A2B</color>
     <color name="kitatrack_warning_yellow">#FACC15</color>
     <color name="kitatrack_soft_warning_background">#3A3215</color>
     <color name="kitatrack_expense_red">#F87171</color>
@@ -13,6 +13,7 @@
     <color name="kitatrack_soft_planner_background">#16241C</color>
     <color name="kitatrack_plan_card_background">#1A231F</color>
     <color name="kitatrack_plan_empty_background">#151C18</color>
+    <color name="kitatrack_segment_selected_background">#2D4236</color>
     <color name="kitatrack_chip_neutral_background">#26322C</color>
     <color name="kitatrack_chip_green_background">#214733</color>
     <color name="kitatrack_chip_yellow_background">#3A3215</color>

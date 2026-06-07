@@ -373,6 +373,18 @@ class PiggyBankRepository(
         return Result.success(Unit)
     }
     suspend fun archive(id: Long) { dao.getById(id)?.let { dao.update(it.copy(isActive = false, isArchived = true, updatedAt = System.currentTimeMillis())) } }
+    suspend fun completeGoal(id: Long): Result<Long> {
+        val bank = dao.getById(id) ?: return Result.failure(IllegalArgumentException("Could not complete this goal."))
+        if (!bank.isActive || bank.isArchived || bank.completedAt != null) {
+            return Result.failure(IllegalStateException("This goal was already completed."))
+        }
+        if (bank.targetAmount <= 0L || bank.currentAmount < bank.targetAmount) {
+            return Result.failure(IllegalStateException("This goal has not reached its target yet."))
+        }
+        val now = System.currentTimeMillis()
+        dao.update(bank.copy(isActive = false, isArchived = true, updatedAt = now, completedAt = now))
+        return Result.success(bank.currentAmount)
+    }
     suspend fun manualAdjust(id: Long, amount: Long, add: Boolean): Result<Unit> {
         val bank = dao.getById(id) ?: return Result.failure(IllegalArgumentException("Piggy bank not found."))
         val next = if (add) bank.currentAmount + amount else bank.currentAmount - amount
@@ -893,12 +905,27 @@ class SubscriptionRepository(
         return Result.success(Unit)
     }
 
-    suspend fun allocateFromIncome(sourceTransactionId: Long, incomeAmount: Long, date: Long): Long {
+    suspend fun allocateFromIncome(sourceTransactionId: Long, incomeAmount: Long, date: Long): Long =
+        allocateFromIncome(sourceTransactionId, incomeAmount, date, IMPORTANCE_LEVELS)
+
+    suspend fun allocateFromIncome(
+        sourceTransactionId: Long,
+        incomeAmount: Long,
+        date: Long,
+        importanceLevels: Set<String>
+    ): Long {
         var remainingIncome = incomeAmount
         var allocated = 0L
         val now = System.currentTimeMillis()
         val subscriptions = dao.getAllForExport()
-            .filter { it.isActive && !it.isArchived && it.reserveEnabled && it.status !in setOf(STATUS_PAUSED, STATUS_CANCELLED, STATUS_ARCHIVED) && it.amount > 0 }
+            .filter {
+                it.isActive &&
+                    !it.isArchived &&
+                    it.reserveEnabled &&
+                    it.importance in importanceLevels &&
+                    it.status !in setOf(STATUS_PAUSED, STATUS_CANCELLED, STATUS_ARCHIVED) &&
+                    it.amount > 0
+            }
             .sortedWith(
                 compareByDescending<SubscriptionEntity> { ((it.nextBillingDate ?: Long.MAX_VALUE) < now) }
                     .thenBy { it.nextBillingDate ?: Long.MAX_VALUE }
@@ -919,12 +946,22 @@ class SubscriptionRepository(
         return allocated
     }
 
-    suspend fun previewAllocationFromIncome(incomeAmount: Long): Long {
+    suspend fun previewAllocationFromIncome(incomeAmount: Long): Long =
+        previewAllocationFromIncome(incomeAmount, IMPORTANCE_LEVELS)
+
+    suspend fun previewAllocationFromIncome(incomeAmount: Long, importanceLevels: Set<String>): Long {
         var remainingIncome = incomeAmount
         var allocated = 0L
         val now = System.currentTimeMillis()
         val subscriptions = dao.getAllForExport()
-            .filter { it.isActive && !it.isArchived && it.reserveEnabled && it.status !in setOf(STATUS_PAUSED, STATUS_CANCELLED, STATUS_ARCHIVED) && it.amount > 0 }
+            .filter {
+                it.isActive &&
+                    !it.isArchived &&
+                    it.reserveEnabled &&
+                    it.importance in importanceLevels &&
+                    it.status !in setOf(STATUS_PAUSED, STATUS_CANCELLED, STATUS_ARCHIVED) &&
+                    it.amount > 0
+            }
             .sortedWith(
                 compareByDescending<SubscriptionEntity> { ((it.nextBillingDate ?: Long.MAX_VALUE) < now) }
                     .thenBy { it.nextBillingDate ?: Long.MAX_VALUE }
@@ -1005,6 +1042,8 @@ class SubscriptionRepository(
         const val IMPORTANCE_HIGH = "HIGH"
         const val IMPORTANCE_ESSENTIAL = "ESSENTIAL"
         val IMPORTANCE_LEVELS = setOf(IMPORTANCE_LOW, IMPORTANCE_MEDIUM, IMPORTANCE_HIGH, IMPORTANCE_ESSENTIAL)
+        val HIGH_PRIORITY_IMPORTANCE_LEVELS = setOf(IMPORTANCE_ESSENTIAL, IMPORTANCE_HIGH)
+        val LOWER_PRIORITY_IMPORTANCE_LEVELS = setOf(IMPORTANCE_MEDIUM, IMPORTANCE_LOW)
         const val STATUS_ACTIVE = "ACTIVE"
         const val STATUS_PAID_CURRENT = "PAID_CURRENT"
         const val STATUS_UPCOMING = "UPCOMING"

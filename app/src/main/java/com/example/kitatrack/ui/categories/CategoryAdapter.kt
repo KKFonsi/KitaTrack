@@ -1,13 +1,17 @@
 package com.example.kitatrack.ui.categories
 
+import android.content.res.ColorStateList
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.example.kitatrack.R
 import com.example.kitatrack.data.local.entity.CategoryEntity
+import com.example.kitatrack.data.repository.CategoryRepository
+import com.example.kitatrack.util.CategoryIconMapper
 import com.google.android.material.button.MaterialButton
 
 class CategoryAdapter(
@@ -35,42 +39,26 @@ class CategoryAdapter(
         private val delete = itemView.findViewById<MaterialButton>(R.id.delete_category_button)
 
         fun bind(category: CategoryEntity) {
+            val isIncomeSource = category.type == CategoryRepository.TYPE_INCOME_SOURCE
             name.text = category.name
             type.text = if (category.isDefault) "Default" else "Custom"
-            icon.setImageResource(iconFor(category.name))
+            icon.setImageResource(
+                if (isIncomeSource) {
+                    CategoryIconMapper.incomeIconFor(category.name)
+                } else {
+                    CategoryIconMapper.expenseIconFor(category.name)
+                }
+            )
+            icon.imageTintList = ColorStateList.valueOf(
+                ContextCompat.getColor(
+                    itemView.context,
+                    if (isIncomeSource) R.color.kitatrack_primary_green else R.color.kitatrack_secondary_text
+                )
+            )
             edit.visibility = if (category.isDefault) View.GONE else View.VISIBLE
             delete.visibility = if (category.isDefault) View.GONE else View.VISIBLE
             edit.setOnClickListener { onEdit(category) }
             delete.setOnClickListener { onDelete(category) }
-        }
-
-        private fun iconFor(name: String): Int {
-            val normalized = name.lowercase()
-                .replace("&", "and")
-                .replace("/", " ")
-                .replace("-", " ")
-                .replace("_", " ")
-                .replace(Regex("\\s+"), " ")
-                .trim()
-            return when {
-                normalized.contains("food") || normalized.contains("drink") -> R.drawable.ic_expense_food_and_drinks
-                normalized.contains("transport") || normalized.contains("gas") -> R.drawable.ic_expense_transportation
-                normalized.contains("shopping") -> R.drawable.ic_expense_shopping
-                normalized.contains("health") || normalized.contains("medical") -> R.drawable.ic_expense_health
-                normalized.contains("debt") || normalized.contains("loan") -> R.drawable.ic_expense_loan
-                normalized.contains("donation") || normalized.contains("donate") -> R.drawable.ic_expense_donation
-                normalized.contains("gaming") || normalized.contains("game") -> R.drawable.ic_expense_gaming
-                normalized.contains("rent") || normalized.contains("housing") || normalized.contains("house") -> R.drawable.ic_expense_bill
-                normalized.contains("education") || normalized.contains("school") -> R.drawable.ic_expense_school
-                normalized.contains("internet") -> R.drawable.ic_expense_internet
-                normalized.contains("personal") || normalized.contains("care") -> R.drawable.ic_expense_personal_care
-                normalized.contains("saving") -> R.drawable.ic_expense_savings
-                normalized.contains("family") -> R.drawable.ic_expense_family
-                normalized.contains("emergency") -> R.drawable.ic_expense_emergency
-                normalized.contains("transfer") || normalized.contains("cash") -> R.drawable.ic_expense_cash_transfer
-                normalized.contains("bill") || normalized.contains("subscription") -> R.drawable.ic_expense_bill
-                else -> R.drawable.ic_expense_other
-            }
         }
     }
 }

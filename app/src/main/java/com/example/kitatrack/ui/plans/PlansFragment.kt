@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
@@ -24,6 +25,7 @@ import com.example.kitatrack.data.local.model.SubscriptionProgress
 import com.example.kitatrack.data.repository.BudgetRepository
 import com.example.kitatrack.data.repository.DebtRepository
 import com.example.kitatrack.data.repository.SubscriptionRepository
+import com.example.kitatrack.util.CategoryIconMapper
 import com.example.kitatrack.util.Formatters
 import com.example.kitatrack.util.ThemePreferences
 import com.google.android.material.button.MaterialButton
@@ -198,13 +200,13 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
                     when (which) {
                         0 -> showDebtPaymentDialog(item, true)
                         1 -> showDebtPaymentDialog(item, false)
-                        2 -> showDebtAmountDialog(item, "Add to Debt Reserve") { amount -> debtViewModel.reserve(debt.id, amount, true, debtResultHandler()) }
-                        3 -> showDebtAmountDialog(item, "Remove from Debt Reserve") { amount -> debtViewModel.reserve(debt.id, amount, false, debtResultHandler()) }
+                        2 -> showDebtAmountDialog(item, "Add to Debt Reserve") { amount -> debtViewModel.reserve(debt.id, amount, true, debtResultHandler("Debt reserve updated.")) }
+                        3 -> showDebtAmountDialog(item, "Remove from Debt Reserve") { amount -> debtViewModel.reserve(debt.id, amount, false, debtResultHandler("Debt reserve updated.")) }
                         4 -> debtViewModel.archive(debt.id)
                     }
                 } else {
                     when (which) {
-                        0 -> showDebtAmountDialog(item, "Payment received") { amount -> debtViewModel.payment(debt.id, amount, false, debtResultHandler()) }
+                        0 -> showDebtAmountDialog(item, "Payment received") { amount -> debtViewModel.payment(debt.id, amount, false, debtResultHandler("Debt payment recorded.")) }
                         1 -> debtViewModel.archive(debt.id)
                     }
                 }
@@ -215,7 +217,7 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
         val debt = item.debt
         val dueAmount = paymentDueForThisTerm(debt)
         if (dueAmount <= 0L) {
-            Snackbar.make(requireView(), "This debt is already fully paid.", Snackbar.LENGTH_LONG).show()
+            Snackbar.make(requireView(), "Debt is already paid.", Snackbar.LENGTH_SHORT).show()
             return
         }
         if (debt.debtType == DebtRepository.TYPE_OWED_TO_ME) {
@@ -280,7 +282,7 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
             .setView(container)
             .setNegativeButton("Cancel", null)
             .setPositiveButton("Pay") { _, _ ->
-                debtViewModel.payment(debt.id, dueAmount, fromReserve, debtResultHandler())
+                debtViewModel.payment(debt.id, dueAmount, fromReserve, debtResultHandler("Debt payment recorded."))
             }
             .show()
     }
@@ -297,7 +299,7 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
             .setMessage(summary)
             .setNegativeButton("Cancel", null)
             .setPositiveButton("Save") { _, _ ->
-                debtViewModel.payment(item.debt.id, amount, fromReserve, debtResultHandler())
+                debtViewModel.payment(item.debt.id, amount, fromReserve, debtResultHandler("Debt payment recorded."))
             }
             .show()
     }
@@ -308,12 +310,12 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
         return minOf(remaining, scheduled)
     }
 
-    private fun debtResultHandler(): (Result<Unit>) -> Unit = { result ->
+    private fun debtResultHandler(successMessage: String = "Debt saved."): (Result<Unit>) -> Unit = { result ->
         result.onSuccess {
-            Snackbar.make(requireView(), "Debt updated.", Snackbar.LENGTH_LONG).show()
+            Snackbar.make(requireView(), successMessage, Snackbar.LENGTH_SHORT).show()
             lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) { app.reminderRepository.rescheduleAll() }
         }
-        result.onFailure { e -> Snackbar.make(requireView(), e.message ?: "Debt could not be updated.", Snackbar.LENGTH_LONG).show() }
+        result.onFailure { e -> Snackbar.make(requireView(), e.message ?: "Something went wrong. Try again.", Snackbar.LENGTH_LONG).show() }
     }
 
     private fun showDebtAmountDialog(item: DebtProgress, title: String, onAmount: (Long) -> Unit) {
@@ -371,16 +373,19 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
             dialog.findViewById<MaterialButton>(R.id.debt_freq_bi_weekly_chip) to DebtRepository.FREQ_BI_WEEKLY,
             dialog.findViewById<MaterialButton>(R.id.debt_freq_monthly_chip) to DebtRepository.FREQ_MONTHLY,
             dialog.findViewById<MaterialButton>(R.id.debt_freq_daily_chip) to DebtRepository.FREQ_DAILY,
-            dialog.findViewById<MaterialButton>(R.id.debt_freq_every_x_days_chip) to DebtRepository.FREQ_EVERY_X_DAYS,
             dialog.findViewById<MaterialButton>(R.id.debt_freq_custom_chip) to DebtRepository.FREQ_CUSTOM
         )
         var selectedType = existing?.debt?.debtType ?: DebtRepository.TYPE_I_OWE
-        var selectedFreq = existing?.debt?.paymentFrequency ?: DebtRepository.FREQ_ONE_TIME
+        var selectedFreq = when (existing?.debt?.paymentFrequency) {
+            DebtRepository.FREQ_EVERY_X_DAYS -> DebtRepository.FREQ_CUSTOM
+            null -> DebtRepository.FREQ_ONE_TIME
+            else -> existing.debt.paymentFrequency
+        }
         var selectedDue = existing?.debt?.nextDueDate ?: existing?.debt?.dueDate
         name.setText(existing?.debt?.name)
         person.setText(existing?.debt?.personName)
         total.setText(existing?.debt?.totalAmount?.toBigDecimal()?.movePointLeft(2)?.stripTrailingZeros()?.toPlainString())
-        paid.setText(existing?.debt?.amountPaid?.toBigDecimal()?.movePointLeft(2)?.stripTrailingZeros()?.toPlainString() ?: "0.00")
+        paid.setText(existing?.debt?.amountPaid?.toBigDecimal()?.movePointLeft(2)?.stripTrailingZeros()?.toPlainString())
         installment.setText(existing?.debt?.installmentAmount?.toBigDecimal()?.movePointLeft(2)?.stripTrailingZeros()?.toPlainString())
         interval.setText(existing?.debt?.customIntervalDays?.toString())
         selectedDue?.let { due.setText(Formatters.date(it)) }
@@ -389,7 +394,7 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
         reminder.isChecked = existing?.debt?.reminderEnabled ?: false
         active.isChecked = existing?.debt?.isActive ?: true
         fun updateVisibility() {
-            intervalLayout.visibility = if (selectedFreq in setOf(DebtRepository.FREQ_EVERY_X_DAYS, DebtRepository.FREQ_CUSTOM)) View.VISIBLE else View.GONE
+            intervalLayout.visibility = if (selectedFreq == DebtRepository.FREQ_CUSTOM) View.VISIBLE else View.GONE
             autoReserve.visibility = if (selectedType == DebtRepository.TYPE_I_OWE) View.VISIBLE else View.GONE
             context.text = if (selectedType == DebtRepository.TYPE_I_OWE) {
                 "Creates a Debt Reserve: money is set aside from your balance to pay this debt."
@@ -440,7 +445,7 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
                     if (reminder.isChecked) 3 else null,
                     notes.text.toString(),
                     active.isChecked,
-                    debtResultHandler()
+                    debtResultHandler("Debt saved.")
                 )
             sheet.dismiss()
         }
@@ -593,26 +598,26 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
             .setItems(actions) { _, index ->
                 when (actions[index]) {
                     "Mark paid from reserve" -> showAmountDialog("Payment amount", sub.amount) { amount ->
-                        subscriptionViewModel.payment(sub.id, amount, true, subscriptionResultHandler())
+                        subscriptionViewModel.payment(sub.id, amount, true, subscriptionResultHandler("Subscription payment recorded."))
                     }
                     "Mark paid from Main Balance" -> showAmountDialog("Payment amount", sub.amount) { amount ->
-                        subscriptionViewModel.payment(sub.id, amount, false, subscriptionResultHandler())
+                        subscriptionViewModel.payment(sub.id, amount, false, subscriptionResultHandler("Subscription payment recorded."))
                     }
                     "Add reserve" -> showAmountDialog("Amount to reserve") { amount ->
-                        subscriptionViewModel.reserve(sub.id, amount, true, subscriptionResultHandler())
+                        subscriptionViewModel.reserve(sub.id, amount, true, subscriptionResultHandler("Subscription reserve updated."))
                     }
                     "Remove reserve" -> showAmountDialog("Amount to remove from reserve") { amount ->
-                        subscriptionViewModel.reserve(sub.id, amount, false, subscriptionResultHandler())
+                        subscriptionViewModel.reserve(sub.id, amount, false, subscriptionResultHandler("Subscription reserve updated."))
                     }
                     "Archive" -> subscriptionViewModel.archive(sub.id)
                 }
             }.show()
     }
 
-    private fun subscriptionResultHandler(): (Result<Unit>) -> Unit = { result ->
+    private fun subscriptionResultHandler(successMessage: String = "Subscription saved."): (Result<Unit>) -> Unit = { result ->
         result.fold(
-            onSuccess = { view?.let { Snackbar.make(it, "Subscription updated.", Snackbar.LENGTH_SHORT).show() } },
-            onFailure = { error -> view?.let { Snackbar.make(it, error.message ?: "Subscription action failed.", Snackbar.LENGTH_LONG).show() } }
+            onSuccess = { view?.let { Snackbar.make(it, successMessage, Snackbar.LENGTH_SHORT).show() } },
+            onFailure = { error -> view?.let { Snackbar.make(it, error.message ?: "Something went wrong. Try again.", Snackbar.LENGTH_LONG).show() } }
         )
     }
 
@@ -633,7 +638,6 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
             dialog.findViewById<MaterialButton>(R.id.subscription_cycle_monthly_chip) to SubscriptionRepository.CYCLE_MONTHLY,
             dialog.findViewById<MaterialButton>(R.id.subscription_cycle_yearly_chip) to SubscriptionRepository.CYCLE_YEARLY,
             dialog.findViewById<MaterialButton>(R.id.subscription_cycle_weekly_chip) to SubscriptionRepository.CYCLE_WEEKLY,
-            dialog.findViewById<MaterialButton>(R.id.subscription_cycle_every_x_days_chip) to SubscriptionRepository.CYCLE_EVERY_X_DAYS,
             dialog.findViewById<MaterialButton>(R.id.subscription_cycle_custom_chip) to SubscriptionRepository.CYCLE_CUSTOM
         )
         val priorityChips = listOf(
@@ -643,7 +647,11 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
             dialog.findViewById<MaterialButton>(R.id.subscription_priority_essential_chip) to SubscriptionRepository.IMPORTANCE_ESSENTIAL
         )
         val categories = latestState.categories
-        var selectedCycle = existing?.subscription?.billingCycle ?: SubscriptionRepository.CYCLE_MONTHLY
+        var selectedCycle = when (existing?.subscription?.billingCycle) {
+            SubscriptionRepository.CYCLE_EVERY_X_DAYS -> SubscriptionRepository.CYCLE_CUSTOM
+            null -> SubscriptionRepository.CYCLE_MONTHLY
+            else -> existing.subscription.billingCycle
+        }
         var selectedImportance = existing?.subscription?.importance ?: SubscriptionRepository.IMPORTANCE_MEDIUM
         var selectedCategory = categories.firstOrNull { it.id == existing?.subscription?.categoryId }
         var selectedDue = existing?.subscription?.nextBillingDate
@@ -659,7 +667,7 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
         reminder.isChecked = existing?.subscription?.reminderEnabled ?: false
         active.isChecked = existing?.subscription?.isActive ?: true
         fun updateVisibility() {
-            intervalLayout.visibility = if (selectedCycle in setOf(SubscriptionRepository.CYCLE_EVERY_X_DAYS, SubscriptionRepository.CYCLE_CUSTOM)) View.VISIBLE else View.GONE
+            intervalLayout.visibility = if (selectedCycle == SubscriptionRepository.CYCLE_CUSTOM) View.VISIBLE else View.GONE
             cycleChips.forEach { (chip, value) -> styleChoiceChip(chip, value == selectedCycle) }
             priorityChips.forEach { (chip, value) -> stylePriorityChip(chip, value == selectedImportance, value) }
         }
@@ -700,7 +708,7 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
                     reminder.isChecked,
                     notes.text.toString(),
                     active.isChecked,
-                    subscriptionResultHandler()
+                    subscriptionResultHandler("Subscription saved.")
                 )
             sheet.dismiss()
         }
@@ -715,11 +723,13 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
         items.forEach { item ->
             if (refreshedPiggyIds.add(item.id)) piggyViewModel.refreshMissed(item.id)
             val card = layoutInflater.inflate(R.layout.item_piggy_bank_card, container, false)
+            val goalReached = isPiggyGoalReached(item)
             card.findViewById<TextView>(R.id.piggy_name).text = item.name
             card.findViewById<TextView>(R.id.piggy_status).apply {
                 visibility = View.VISIBLE
-                text = item.statusLabel
-                tintChip(this, if (item.isOnTrack == false || item.unresolvedMissedCount > 0) R.color.kitatrack_chip_yellow_background else R.color.kitatrack_chip_green_background, if (item.isOnTrack == false || item.unresolvedMissedCount > 0) R.color.kitatrack_secondary_text else R.color.kitatrack_primary_green)
+                text = if (goalReached) "Goal reached" else item.statusLabel
+                val needsAttention = !goalReached && (item.isOnTrack == false || item.unresolvedMissedCount > 0)
+                tintChip(this, if (needsAttention) R.color.kitatrack_chip_yellow_background else R.color.kitatrack_chip_green_background, if (needsAttention) R.color.kitatrack_secondary_text else R.color.kitatrack_primary_green)
             }
             card.findViewById<TextView>(R.id.piggy_amounts).text = "${Formatters.peso(item.currentAmount)} saved of ${Formatters.peso(item.targetAmount)}"
             card.findViewById<TextView>(R.id.piggy_saved_value).text = Formatters.peso(item.currentAmount)
@@ -742,6 +752,10 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
                 text = if (item.unresolvedMissedCount > 0) {
                     "${item.unresolvedMissedCount} contribution${if (item.unresolvedMissedCount == 1) "" else "s"} need adjustment"
                 } else ""
+            }
+            card.findViewById<MaterialButton>(R.id.piggy_complete_button).apply {
+                visibility = if (goalReached && item.isActive) View.VISIBLE else View.GONE
+                setOnClickListener { showPiggyCompleteConfirmation(item) }
             }
             card.setOnClickListener { showPiggyDetails(item) }
             card.setOnLongClickListener {
@@ -827,34 +841,80 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
                 val targetValue = target.text.toString().toBigDecimalOrNull()?.movePointRight(2)?.toLong() ?: 0L
                 val weeklyValue = weeklyIncome.text.toString().toBigDecimalOrNull()?.movePointRight(2)?.toLong() ?: 0L
                 piggyViewModel.save(existing?.id, name.text.toString(), targetValue, existing?.currentAmount ?: 0L, weeklyValue, selectedPercent, selectedTargetDate, notes.text.toString(), over.isChecked, active.isChecked) {
-                    it.onFailure { e -> Snackbar.make(requireView(), e.message ?: "Piggy bank could not be saved.", Snackbar.LENGTH_LONG).show() }
+                    it.onSuccess { Snackbar.make(requireView(), "Piggy Bank saved.", Snackbar.LENGTH_SHORT).show() }
+                    it.onFailure { e -> Snackbar.make(requireView(), e.message ?: "Something went wrong. Try again.", Snackbar.LENGTH_LONG).show() }
                 }
             sheet.dismiss()
         }
     }
 
+    private fun isPiggyGoalReached(item: com.example.kitatrack.data.local.model.PiggyBankProgress): Boolean =
+        item.targetAmount > 0L && item.currentAmount >= item.targetAmount
+
     private fun showPiggyDetails(item: com.example.kitatrack.data.local.model.PiggyBankProgress) {
         piggyViewModel.refreshMissed(item.id)
+        val goalReached = isPiggyGoalReached(item)
         MaterialAlertDialogBuilder(requireContext())
             .setTitle(item.name)
             .setMessage(buildPiggyDetailMessage(item))
             .setNegativeButton("Close", null)
             .setNeutralButton("Record No Money Week") { _, _ -> showMissedAllowanceDialog(item) }
-            .setPositiveButton(if (item.unresolvedMissedCount > 0) "Adjust Plan" else "Edit") { _, _ ->
-                if (item.unresolvedMissedCount > 0) showPiggyAdjustmentDialog(item) else showPiggyDialog(item)
+            .setPositiveButton(
+                when {
+                    goalReached -> "Complete Goal"
+                    item.unresolvedMissedCount > 0 -> "Adjust Plan"
+                    else -> "Edit"
+                }
+            ) { _, _ ->
+                when {
+                    goalReached -> showPiggyCompleteConfirmation(item)
+                    item.unresolvedMissedCount > 0 -> showPiggyAdjustmentDialog(item)
+                    else -> showPiggyDialog(item)
+                }
+            }
+            .show()
+    }
+
+    private fun showPiggyCompleteConfirmation(item: com.example.kitatrack.data.local.model.PiggyBankProgress) {
+        if (!isPiggyGoalReached(item)) {
+            Snackbar.make(requireView(), "Goal is not complete yet.", Snackbar.LENGTH_SHORT).show()
+            return
+        }
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Complete Piggy Bank Goal?")
+            .setMessage(
+                "You reached this savings goal. Completing it will move ${Formatters.peso(item.currentAmount)} from Piggy Bank reserve back to Main Balance so it is available to spend.\n\n" +
+                    "This is not income and not an expense."
+            )
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Move to Main Balance") { _, _ ->
+                piggyViewModel.completeGoal(item.id) { result ->
+                    result.onSuccess {
+                        Snackbar.make(requireView(), "Savings moved to Main Balance.", Snackbar.LENGTH_SHORT).show()
+                    }
+                    result.onFailure { e ->
+                        Snackbar.make(requireView(), e.message ?: "Something went wrong. Try again.", Snackbar.LENGTH_LONG).show()
+                    }
+                }
             }
             .show()
     }
 
     private fun showPiggyActions(item: com.example.kitatrack.data.local.model.PiggyBankProgress) {
+        val actions = if (isPiggyGoalReached(item)) {
+            arrayOf("Complete Goal", "Add money", "Remove money", "Adjust missed contribution", "Archive")
+        } else {
+            arrayOf("Add money", "Remove money", "Adjust missed contribution", "Archive")
+        }
         MaterialAlertDialogBuilder(requireContext())
             .setTitle(item.name)
-            .setItems(arrayOf("Add money", "Remove money", "Adjust missed contribution", "Archive")) { _, which ->
-                when (which) {
-                    0 -> showPiggyAdjustDialog(item, true)
-                    1 -> showPiggyAdjustDialog(item, false)
-                    2 -> showPiggyAdjustmentDialog(item)
-                    3 -> piggyViewModel.archive(item.id)
+            .setItems(actions) { _, which ->
+                when (actions[which]) {
+                    "Complete Goal" -> showPiggyCompleteConfirmation(item)
+                    "Add money" -> showPiggyAdjustDialog(item, true)
+                    "Remove money" -> showPiggyAdjustDialog(item, false)
+                    "Adjust missed contribution" -> showPiggyAdjustmentDialog(item)
+                    "Archive" -> piggyViewModel.archive(item.id)
                 }
             }.show()
     }
@@ -892,7 +952,7 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
 
     private fun showPiggyAdjustmentDialog(item: com.example.kitatrack.data.local.model.PiggyBankProgress) {
         if (item.unresolvedMissedCount <= 0) {
-            Snackbar.make(requireView(), "No missed contributions for this goal.", Snackbar.LENGTH_LONG).show()
+            Snackbar.make(requireView(), "No missed contributions.", Snackbar.LENGTH_SHORT).show()
             return
         }
         val content = LinearLayout(requireContext()).apply {
@@ -943,8 +1003,8 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
 
     private fun applyPiggyAdjustment(item: com.example.kitatrack.data.local.model.PiggyBankProgress, type: String) {
         piggyViewModel.applyAdjustment(item.id, type) { result ->
-            result.onSuccess { Snackbar.make(requireView(), "Piggy bank plan updated.", Snackbar.LENGTH_LONG).show() }
-            result.onFailure { e -> Snackbar.make(requireView(), e.message ?: "Could not update piggy bank plan.", Snackbar.LENGTH_LONG).show() }
+            result.onSuccess { Snackbar.make(requireView(), "Piggy Bank updated.", Snackbar.LENGTH_SHORT).show() }
+            result.onFailure { e -> Snackbar.make(requireView(), e.message ?: "Something went wrong. Try again.", Snackbar.LENGTH_LONG).show() }
         }
     }
 
@@ -972,8 +1032,8 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
             .setPositiveButton("Save") { _, _ ->
                 val amount = actual.text.toString().toBigDecimalOrNull()?.movePointRight(2)?.toLong() ?: 0L
                 piggyViewModel.recordNoIncomeWeek(item.id, com.example.kitatrack.util.DateRanges.currentWeek().first, amount) { result ->
-                    result.onSuccess { Snackbar.make(requireView(), "No-money week recorded.", Snackbar.LENGTH_LONG).show() }
-                    result.onFailure { e -> Snackbar.make(requireView(), e.message ?: "Could not record no-money week.", Snackbar.LENGTH_LONG).show() }
+                    result.onSuccess { Snackbar.make(requireView(), "Planning gap saved.", Snackbar.LENGTH_SHORT).show() }
+                    result.onFailure { e -> Snackbar.make(requireView(), e.message ?: "Something went wrong. Try again.", Snackbar.LENGTH_LONG).show() }
                 }
             }.show()
     }
@@ -986,7 +1046,8 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
             .setPositiveButton(if (add) "Add" else "Remove") { _, _ ->
                 val amount = input.text.toString().toBigDecimalOrNull()?.movePointRight(2)?.toLong() ?: 0L
                 piggyViewModel.adjust(item.id, amount, add) { result ->
-                    result.onFailure { e -> Snackbar.make(requireView(), e.message ?: "Could not update piggy bank.", Snackbar.LENGTH_LONG).show() }
+                    result.onSuccess { Snackbar.make(requireView(), "Piggy Bank updated.", Snackbar.LENGTH_SHORT).show() }
+                    result.onFailure { e -> Snackbar.make(requireView(), e.message ?: "Something went wrong. Try again.", Snackbar.LENGTH_LONG).show() }
                 }
             }.show()
     }
@@ -999,6 +1060,8 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
         empty.visibility = if (budgets.isEmpty()) View.VISIBLE else View.GONE
         budgets.forEach { budget ->
             val card = layoutInflater.inflate(R.layout.item_budget_card, container, false)
+            card.findViewById<ImageView>(R.id.budget_category_icon)
+                .setImageResource(budget.categoryName?.let { CategoryIconMapper.expenseIconFor(it) } ?: R.drawable.ic_plans_budget)
             card.findViewById<TextView>(R.id.budget_name).text = budget.name
             card.findViewById<TextView>(R.id.budget_meta).text =
                 "${budget.periodLabel} · ${budget.categoryName ?: "Overall"}${if (!budget.isActive) " · Inactive" else ""}"
@@ -1090,7 +1153,7 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
         }
         category.setOnClickListener {
             if (budgetCategories.isEmpty()) {
-                Snackbar.make(requireView(), "No expense categories found. Add one in Manage Categories.", Snackbar.LENGTH_LONG).show()
+                Snackbar.make(requireView(), "No expense categories found.", Snackbar.LENGTH_SHORT).show()
             } else {
                 category.post { category.showDropDown() }
             }
@@ -1102,7 +1165,8 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
         dialogView.findViewById<MaterialButton>(R.id.budget_cancel_button).setOnClickListener { sheet.dismiss() }
         dialogView.findViewById<MaterialButton>(R.id.budget_save_button).setOnClickListener {
             viewModel.save(existing?.budgetId, name.text.toString(), selectedBudgetType(), amount.text.toString(), selectedCategory?.id, active.isChecked) {
-                it.onFailure { e -> Snackbar.make(requireView(), e.message ?: "Budget could not be saved.", Snackbar.LENGTH_LONG).show() }
+                it.onSuccess { Snackbar.make(requireView(), "Budget saved.", Snackbar.LENGTH_SHORT).show() }
+                it.onFailure { e -> Snackbar.make(requireView(), e.message ?: "Something went wrong. Try again.", Snackbar.LENGTH_LONG).show() }
             }
             sheet.dismiss()
         }

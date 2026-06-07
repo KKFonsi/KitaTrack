@@ -109,24 +109,10 @@
                     android:orientation="horizontal">
 
                     <com.google.android.material.button.MaterialButton
-                        android:id="@+id/subscription_cycle_every_x_days_chip"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
-                        android:layout_width="0dp"
-                        android:layout_height="match_parent"
-                        android:layout_marginEnd="4dp"
-                        android:layout_weight="1"
-                        android:minWidth="0dp"
-                        android:text="Every X"
-                        android:textAllCaps="false"
-                        android:textSize="12sp"
-                        app:cornerRadius="12dp" />
-
-                    <com.google.android.material.button.MaterialButton
                         android:id="@+id/subscription_cycle_custom_chip"
                         style="@style/Widget.Material3.Button.OutlinedButton"
                         android:layout_width="0dp"
                         android:layout_height="match_parent"
-                        android:layout_marginStart="4dp"
                         android:layout_marginEnd="4dp"
                         android:layout_weight="1"
                         android:minWidth="0dp"
@@ -139,7 +125,7 @@
                         android:layout_width="0dp"
                         android:layout_height="match_parent"
                         android:layout_marginStart="4dp"
-                        android:layout_weight="1" />
+                        android:layout_weight="2" />
                 </LinearLayout>
             </LinearLayout>
 

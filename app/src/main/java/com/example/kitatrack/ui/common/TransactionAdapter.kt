@@ -4,11 +4,13 @@ import android.content.res.ColorStateList
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.example.kitatrack.R
 import com.example.kitatrack.ui.history.HistoryRow
+import com.example.kitatrack.util.CategoryIconMapper
 import com.example.kitatrack.util.Formatters
 
 class TransactionAdapter(
@@ -33,7 +35,9 @@ class TransactionAdapter(
     inner class TransactionViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val title = itemView.findViewById<TextView>(R.id.transaction_title)
         private val amount = itemView.findViewById<TextView>(R.id.transaction_amount)
+        private val iconCircle = itemView.findViewById<View>(R.id.transaction_icon_circle)
         private val icon = itemView.findViewById<TextView>(R.id.transaction_icon)
+        private val categoryIcon = itemView.findViewById<ImageView>(R.id.transaction_category_icon)
         private val meta = itemView.findViewById<TextView>(R.id.transaction_meta)
         private val note = itemView.findViewById<TextView>(R.id.transaction_note)
         private val balance = itemView.findViewById<TextView>(R.id.transaction_balance)
@@ -46,9 +50,17 @@ class TransactionAdapter(
             title.text = tx.description.ifBlank { row.item.categoryName ?: "Transaction" }
             amount.text = "${if (isIncome) "+" else "-"}${Formatters.peso(tx.amount)}"
             amount.setTextColor(accent)
-            icon.text = if (isIncome) "+" else "-"
-            icon.setTextColor(accent)
-            icon.backgroundTintList = ColorStateList.valueOf(iconBg)
+            icon.visibility = View.GONE
+            iconCircle.backgroundTintList = ColorStateList.valueOf(iconBg)
+            categoryIcon.visibility = View.VISIBLE
+            categoryIcon.imageTintList = ColorStateList.valueOf(accent)
+            categoryIcon.setImageResource(
+                if (isIncome) {
+                    CategoryIconMapper.incomeIconFor(row.item.categoryName)
+                } else {
+                    CategoryIconMapper.expenseIconFor(row.item.categoryName)
+                }
+            )
             meta.text = "${if (isIncome) "Income" else "Expense"} | ${row.item.categoryName ?: "Uncategorized"} | ${Formatters.shortDate(tx.occurredAt)}"
             note.visibility = if (tx.note.isNullOrBlank()) View.GONE else View.VISIBLE
             note.text = tx.note

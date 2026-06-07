@@ -72,6 +72,7 @@ class PiggyBankViewModel(private val repository: PiggyBankRepository, transactio
         return repository.calculateAllocationPlan(target, current, weeklyIncomePrediction, date, other)
     }
     fun archive(id: Long) = viewModelScope.launch { repository.archive(id) }
+    fun completeGoal(id: Long, onResult: (Result<Long>) -> Unit) = viewModelScope.launch { onResult(repository.completeGoal(id)) }
     fun adjust(id: Long, amount: Long, add: Boolean, onResult: (Result<Unit>) -> Unit) = viewModelScope.launch { onResult(repository.manualAdjust(id, amount, add)) }
     fun missedFor(id: Long) = repository.getMissedContributionsForPiggyBank(id)
     fun refreshMissed(id: Long) = viewModelScope.launch { repository.refreshMissedContributions(id) }

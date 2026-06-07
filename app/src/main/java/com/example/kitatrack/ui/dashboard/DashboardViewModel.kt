@@ -11,10 +11,10 @@ import com.example.kitatrack.data.repository.TransactionRepository
 import com.example.kitatrack.data.repository.DebtRepository
 import com.example.kitatrack.data.repository.SubscriptionRepository
 import com.example.kitatrack.util.DateRanges
-import com.example.kitatrack.util.Formatters
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import java.util.concurrent.TimeUnit
 
 data class DashboardUiState(
     val mainBalance: Long = 0,
@@ -27,16 +27,21 @@ data class DashboardUiState(
     val weeklyBudget: BudgetProgress? = null,
     val monthlyBudget: BudgetProgress? = null,
     val budgetPreviews: List<BudgetProgress> = emptyList(),
-    val budgetWarning: String? = null,
+    val dashboardInsight: String = "No urgent money alerts today.",
     val piggyBankTotal: Long = 0,
     val debtReserve: Long = 0,
     val totalDebtIOwe: Long = 0,
     val totalOwedToMe: Long = 0,
     val overdueDebtCount: Int = 0,
+    val upcomingDebtCount: Int = 0,
+    val upcomingDebtReserveShortfall: Long = 0,
     val nearestDebtName: String? = null,
     val subscriptionReserve: Long = 0,
     val upcomingSubscriptionCount: Int = 0,
     val overdueSubscriptionCount: Int = 0,
+    val upcomingSubscriptionReserveShortfall: Long = 0,
+    val reserveDisabledUpcomingSubscriptionCount: Int = 0,
+    val activeSubscriptionCount: Int = 0,
     val nextSubscriptionName: String? = null,
     val monthlySubscriptionEstimate: Long = 0,
     val totalMoneyTracked: Long = 0,
@@ -76,20 +81,51 @@ class DashboardViewModel(repository: TransactionRepository, budgetRepository: Bu
         val debtReserve = activeDebts.filter { it.debtType == DebtRepository.TYPE_I_OWE }.sumOf { it.reservedAmount }
         val subscriptionReserve = activeSubscriptions.filter { it.reserveEnabled }.sumOf { it.reservedAmount }
         val now = System.currentTimeMillis()
+        val dueSoonWindow = TimeUnit.DAYS.toMillis(7)
         val overdueDebts = activeDebts.filter { it.remainingAmount > 0 && it.debtType == DebtRepository.TYPE_I_OWE && (it.nextDueDate ?: it.dueDate ?: Long.MAX_VALUE) < now }
-        val overdueSubscriptions = activeSubscriptions.filter { (it.nextBillingDate ?: Long.MAX_VALUE) < now }
-        val upcomingSubscriptions = activeSubscriptions.filter { (it.nextBillingDate ?: Long.MAX_VALUE) >= now && (it.nextBillingDate ?: Long.MAX_VALUE) - now <= java.util.concurrent.TimeUnit.DAYS.toMillis(7) }
-        val prioritizedBudgets = active.sortedWith(budgetPreviewComparator())
-        val warning = prioritizedBudgets.firstOrNull { it.isOverLimit || it.isNearLimit }?.let {
-            if (it.isOverLimit) "${it.name} is over budget by ${Formatters.peso(-it.remainingAmount)}."
-            else "You have used ${it.usagePercent}% of ${it.name}."
-        } ?: prioritizedBudgets.firstOrNull { it.reserveImpactAmount > 0L && it.remainingAmount in 1L..5_000L }?.let {
-            "Your allocations leave only ${Formatters.peso(it.remainingAmount)} for ${it.periodLabel.lowercase()} spending. Debt stays protected; consider lowering piggy bank or optional subscription reserves first."
-        } ?: prioritizedBudgets.firstOrNull { it.adjustedLimitAmount <= 0L && it.reserveImpactAmount > 0L }?.let {
-            "Your current allocations leave no usable ${it.periodLabel.lowercase()} budget after reserves."
+        val upcomingDebts = activeDebts.filter {
+            val due = it.nextDueDate ?: it.dueDate ?: Long.MAX_VALUE
+            it.remainingAmount > 0 && it.debtType == DebtRepository.TYPE_I_OWE && due >= now && due - now <= dueSoonWindow
         }
+        val overdueSubscriptions = activeSubscriptions.filter { (it.nextBillingDate ?: Long.MAX_VALUE) < now }
+        val upcomingSubscriptions = activeSubscriptions.filter { (it.nextBillingDate ?: Long.MAX_VALUE) >= now && (it.nextBillingDate ?: Long.MAX_VALUE) - now <= dueSoonWindow }
+        val prioritizedBudgets = active.sortedWith(budgetPreviewComparator())
+        val totalReserved = debtReserve + piggyTotal + subscriptionReserve
+        val mainBalance = amounts.totalIncome - amounts.totalExpenses - totalReserved
+        val upcomingDebtShortfall = upcomingDebts.sumOf {
+            val dueAmount = (it.installmentAmount ?: it.remainingAmount).coerceAtMost(it.remainingAmount)
+            (dueAmount - it.reservedAmount).coerceAtLeast(0)
+        }
+        val upcomingSubscriptionShortfall = upcomingSubscriptions
+            .filter { it.reserveEnabled }
+            .sumOf { (it.amount - it.reservedAmount).coerceAtLeast(0) }
+        val reserveDisabledUpcomingSubscriptions = upcomingSubscriptions.count { !it.reserveEnabled }
+        val piggyBanksNeedingAdjustment = missed.map { it.piggyBankId }.distinct().size
+        val missedPiggyContributionTotal = missed.sumOf { it.missedAmount }
+        val dashboardInsight = DashboardInsightGenerator.generate(
+            DashboardInsightInput(
+                mainBalance = mainBalance,
+                monthlyIncome = amounts.monthIncome,
+                monthlyExpenses = amounts.monthExpenses,
+                monthlyNet = amounts.monthIncome - amounts.monthExpenses,
+                totalReserved = totalReserved,
+                totalMoneyTracked = amounts.totalIncome - amounts.totalExpenses,
+                budgets = prioritizedBudgets,
+                debtReserve = debtReserve,
+                upcomingDebtCount = upcomingDebts.size,
+                upcomingDebtReserveShortfall = upcomingDebtShortfall,
+                subscriptionReserve = subscriptionReserve,
+                upcomingSubscriptionCount = upcomingSubscriptions.size,
+                upcomingSubscriptionReserveShortfall = upcomingSubscriptionShortfall,
+                reserveDisabledUpcomingSubscriptionCount = reserveDisabledUpcomingSubscriptions,
+                activeSubscriptionCount = activeSubscriptions.size,
+                activePiggyBanks = activePiggies.size,
+                piggyBanksNeedingAdjustment = piggyBanksNeedingAdjustment,
+                missedPiggyContributionTotal = missedPiggyContributionTotal
+            )
+        )
         DashboardUiState(
-            mainBalance = amounts.totalIncome - amounts.totalExpenses - debtReserve - piggyTotal - subscriptionReserve,
+            mainBalance = mainBalance,
             monthlyIncome = amounts.monthIncome,
             monthlyExpenses = amounts.monthExpenses,
             monthlyNet = amounts.monthIncome - amounts.monthExpenses,
@@ -99,22 +135,27 @@ class DashboardViewModel(repository: TransactionRepository, budgetRepository: Bu
             weeklyBudget = active.firstOrNull { it.budgetType == BudgetRepository.TYPE_WEEKLY_OVERALL },
             monthlyBudget = active.firstOrNull { it.budgetType == BudgetRepository.TYPE_MONTHLY_OVERALL },
             budgetPreviews = prioritizedBudgets.take(3),
-            budgetWarning = warning,
+            dashboardInsight = dashboardInsight,
             piggyBankTotal = piggyTotal,
             debtReserve = debtReserve,
             totalDebtIOwe = activeDebts.filter { it.debtType == DebtRepository.TYPE_I_OWE }.sumOf { it.remainingAmount },
             totalOwedToMe = activeDebts.filter { it.debtType == DebtRepository.TYPE_OWED_TO_ME }.sumOf { it.remainingAmount },
             overdueDebtCount = overdueDebts.size,
+            upcomingDebtCount = upcomingDebts.size,
+            upcomingDebtReserveShortfall = upcomingDebtShortfall,
             nearestDebtName = activeDebts.filter { it.debtType == DebtRepository.TYPE_I_OWE && it.remainingAmount > 0 }.minByOrNull { it.nextDueDate ?: it.dueDate ?: Long.MAX_VALUE }?.name,
             subscriptionReserve = subscriptionReserve,
             upcomingSubscriptionCount = upcomingSubscriptions.size,
             overdueSubscriptionCount = overdueSubscriptions.size,
+            upcomingSubscriptionReserveShortfall = upcomingSubscriptionShortfall,
+            reserveDisabledUpcomingSubscriptionCount = reserveDisabledUpcomingSubscriptions,
+            activeSubscriptionCount = activeSubscriptions.size,
             nextSubscriptionName = activeSubscriptions.minByOrNull { it.nextBillingDate ?: Long.MAX_VALUE }?.name,
             monthlySubscriptionEstimate = activeSubscriptions.sumOf { if (it.billingCycle == SubscriptionRepository.CYCLE_YEARLY) it.amount / 12 else it.amount },
             totalMoneyTracked = amounts.totalIncome - amounts.totalExpenses,
             activePiggyBanks = activePiggies.size,
-            piggyBanksNeedingAdjustment = missed.map { it.piggyBankId }.distinct().size,
-            missedPiggyContributionTotal = missed.sumOf { it.missedAmount },
+            piggyBanksNeedingAdjustment = piggyBanksNeedingAdjustment,
+            missedPiggyContributionTotal = missedPiggyContributionTotal,
             piggyGoalName = previewPiggy?.name,
             piggyGoalCurrentAmount = previewPiggy?.currentAmount ?: 0L,
             piggyGoalTargetAmount = previewPiggy?.targetAmount ?: 0L,

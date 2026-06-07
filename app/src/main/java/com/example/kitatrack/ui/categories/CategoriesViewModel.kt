@@ -22,20 +22,20 @@ class CategoriesViewModel(private val repository: CategoryRepository) : ViewMode
 
     fun add(name: String, type: String) = viewModelScope.launch {
         repository.addCustomCategory(name, type)
-            .onSuccess { _messages.emit("Category added.") }
-            .onFailure { _messages.emit(it.message ?: "Could not add category.") }
+            .onSuccess { _messages.emit(if (type == CategoryRepository.TYPE_INCOME_SOURCE) "Income source added." else "Category added.") }
+            .onFailure { _messages.emit(it.message ?: "Something went wrong. Try again.") }
     }
 
     fun rename(category: CategoryEntity, newName: String) = viewModelScope.launch {
         repository.renameCustomCategory(category, newName)
             .onSuccess { _messages.emit("Category updated.") }
-            .onFailure { _messages.emit(it.message ?: "Could not rename category.") }
+            .onFailure { _messages.emit(it.message ?: "Something went wrong. Try again.") }
     }
 
     fun delete(category: CategoryEntity) = viewModelScope.launch {
         repository.deleteCustomCategory(category)
             .onSuccess { _messages.emit("Category deleted.") }
-            .onFailure { _messages.emit(it.message ?: "Could not delete category.") }
+            .onFailure { _messages.emit(it.message ?: "Something went wrong. Try again.") }
     }
 
     class Factory(private val repository: CategoryRepository) : ViewModelProvider.Factory {

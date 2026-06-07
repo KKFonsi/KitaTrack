@@ -110,7 +110,7 @@ class ReportsViewModel(
             isGeneratingAiSummary.value = true
             val result = aiSummaryRepository.generateSummary(year, month)
             isGeneratingAiSummary.value = false
-            result.onFailure { aiError.value = it.message ?: "AI summary could not be generated. Your reports are still available." }
+            result.onFailure { aiError.value = "AI summary failed." }
         }
     }
 

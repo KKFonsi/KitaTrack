@@ -63,9 +63,9 @@ class QuickAddViewModel(
             if (_isSaving.value) return@launch
             val amount = amountText.toBigDecimalOrNull()
             when {
-                amount == null || amount <= java.math.BigDecimal.ZERO -> _result.emit(QuickAddResult.Error("Enter an amount greater than PHP 0."))
-                category == null -> _result.emit(QuickAddResult.Error(if (type == QuickAddActivity.TYPE_INCOME) "Choose a source of funds." else "Choose an expense category."))
-                type == QuickAddActivity.TYPE_EXPENSE && description.trim().isBlank() -> _result.emit(QuickAddResult.Error("Description is required."))
+                amount == null || amount <= java.math.BigDecimal.ZERO -> _result.emit(QuickAddResult.Error("Enter a valid amount."))
+                category == null -> _result.emit(QuickAddResult.Error(if (type == QuickAddActivity.TYPE_INCOME) "Select an income source." else "Select a category."))
+                type == QuickAddActivity.TYPE_EXPENSE && description.trim().isBlank() -> _result.emit(QuickAddResult.Error("Name cannot be empty."))
                 else -> {
                     val centavos = amount.toCentavosOrNull()
                     if (centavos == null) {
@@ -90,9 +90,9 @@ class QuickAddViewModel(
                         if (type == QuickAddActivity.TYPE_INCOME) {
                             incomeAllocationUseCase.allocateIncome(txId, centavos, date)
                         }
-                        _result.emit(QuickAddResult.Success(if (type == QuickAddActivity.TYPE_INCOME) "Income saved. Widget will refresh." else "Expense saved. Widget will refresh."))
+                        _result.emit(QuickAddResult.Success(if (type == QuickAddActivity.TYPE_INCOME) "Income added. Allocations updated." else "Expense added."))
                     } catch (e: Exception) {
-                        _result.emit(QuickAddResult.Error(e.message ?: "Transaction could not be saved."))
+                        _result.emit(QuickAddResult.Error("Something went wrong. Try again."))
                     } finally {
                         _isSaving.value = false
                     }

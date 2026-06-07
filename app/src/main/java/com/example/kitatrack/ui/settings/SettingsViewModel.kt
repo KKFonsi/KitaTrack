@@ -69,7 +69,7 @@ class SettingsViewModel(
             shouldConfirmRestore = validation.isValid,
             message = null
         )
-        _messages.tryEmit(validation.message)
+        _messages.tryEmit(if (validation.isValid) "Backup ready to import." else "Invalid backup file.")
     }
 
     fun restoreValidatedBackup(mode: RestoreMode) {
@@ -85,8 +85,8 @@ class SettingsViewModel(
             )
             _messages.emit(
                 result.fold(
-                    { if (mode == RestoreMode.MERGE_NEWEST_WINS) "Backup merged successfully." else "Backup restored successfully." },
-                    { it.message ?: "Restore failed. Your current data was not changed." }
+                    { "Backup imported." },
+                    { "Import failed." }
                 )
             )
         }
@@ -98,7 +98,7 @@ class SettingsViewModel(
             val result = repository.resetAllData()
             if (result.isSuccess) reminderRepository.rescheduleAll()
             _uiState.value = _uiState.value.copy(isLoading = false, message = null)
-            _messages.emit(result.fold({ "All local data was reset." }, { it.message ?: "Reset failed. Your current data was not changed." }))
+            _messages.emit(result.fold({ "Local data reset." }, { "Reset failed." }))
         }
     }
 
@@ -109,7 +109,7 @@ class SettingsViewModel(
             if (updated == current) return@launch
             appSettingsRepository.save(updated)
             reminderRepository.rescheduleAll()
-            _messages.emit("Reminder settings updated.")
+            _messages.emit("Reminder settings saved.")
         }
     }
 
@@ -119,7 +119,7 @@ class SettingsViewModel(
             val updated = transform(current)
             if (updated == current) return@launch
             appSettingsRepository.save(updated)
-            _messages.emit("Settings updated.")
+            _messages.emit("Changes saved.")
         }
     }
 

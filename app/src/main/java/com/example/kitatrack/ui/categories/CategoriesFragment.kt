@@ -100,9 +100,9 @@ class CategoriesFragment : Fragment(R.layout.fragment_categories) {
         else CategoryRepository.TYPE_EXPENSE
 
     private fun updateSegmentStyle(view: View, selectedId: Int) {
-        val selectedBackground = ColorStateList.valueOf(ContextCompat.getColor(requireContext(), R.color.kitatrack_card_background))
+        val selectedBackground = ColorStateList.valueOf(ContextCompat.getColor(requireContext(), R.color.kitatrack_segment_selected_background))
         val unselectedBackground = ColorStateList.valueOf(Color.TRANSPARENT)
-        val selectedText = ContextCompat.getColor(requireContext(), R.color.kitatrack_primary_text)
+        val selectedText = ContextCompat.getColor(requireContext(), R.color.kitatrack_primary_green)
         val unselectedText = ContextCompat.getColor(requireContext(), R.color.kitatrack_secondary_text)
         val border = ColorStateList.valueOf(Color.TRANSPARENT)
 

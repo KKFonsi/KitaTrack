@@ -16,15 +16,20 @@
         android:orientation="horizontal"
         android:padding="16dp">
 
-        <TextView
-            android:id="@+id/reserve_icon"
+        <FrameLayout
             android:layout_width="42dp"
             android:layout_height="42dp"
-            android:background="@drawable/kt_icon_circle"
-            android:gravity="center"
-            android:textColor="@color/kitatrack_primary_green"
-            android:textSize="15sp"
-            android:textStyle="bold" />
+            android:background="@drawable/kt_icon_circle">
+
+            <ImageView
+                android:id="@+id/reserve_icon"
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:layout_gravity="center"
+                android:contentDescription="@null"
+                android:scaleType="fitCenter"
+                app:tint="@color/kitatrack_primary_green" />
+        </FrameLayout>
 
         <LinearLayout
             android:layout_width="0dp"

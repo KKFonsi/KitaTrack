@@ -18,6 +18,7 @@ import com.example.kitatrack.KitaTrackApplication
 import com.example.kitatrack.R
 import com.example.kitatrack.data.local.entity.CategoryEntity
 import com.example.kitatrack.data.local.entity.PiggyBankEntity
+import com.example.kitatrack.util.CategoryIconMapper
 import com.example.kitatrack.util.Formatters
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
@@ -118,7 +119,7 @@ class AddTransactionFragment : Fragment(R.layout.fragment_add_transaction) {
                     viewModel.saveResults.collect { result ->
                         when (result) {
                             is SaveTransactionResult.Success -> {
-                                Snackbar.make(view, result.budgetWarning ?: result.allocationSummary ?: "Transaction saved.", Snackbar.LENGTH_LONG).show()
+                                Snackbar.make(view, result.budgetWarning ?: result.message, Snackbar.LENGTH_SHORT).show()
                                 viewLifecycleOwner.lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
                                     app.reminderRepository.rescheduleAll()
                                 }
@@ -184,6 +185,22 @@ class AddTransactionFragment : Fragment(R.layout.fragment_add_transaction) {
                 chipStrokeWidth = dp(1).toFloat()
                 chipStrokeColor = ColorStateList.valueOf(ContextCompat.getColor(requireContext(), R.color.kitatrack_subtle_border))
                 setTextColor(ContextCompat.getColor(requireContext(), if (isChecked) R.color.white else R.color.kitatrack_secondary_text))
+                chipIcon = ContextCompat.getDrawable(
+                    requireContext(),
+                    if (screenType == TransactionType.INCOME) {
+                        CategoryIconMapper.incomeIconFor(category.name)
+                    } else {
+                        CategoryIconMapper.expenseIconFor(category.name)
+                    }
+                )
+                isChipIconVisible = true
+                chipIconSize = dp(16).toFloat()
+                chipIconTint = ColorStateList.valueOf(
+                    ContextCompat.getColor(
+                        requireContext(),
+                        if (isChecked) R.color.white else if (screenType == TransactionType.INCOME) R.color.kitatrack_primary_green else R.color.kitatrack_expense_red
+                    )
+                )
                 chipBackgroundColor = ColorStateList.valueOf(
                     ContextCompat.getColor(
                         requireContext(),

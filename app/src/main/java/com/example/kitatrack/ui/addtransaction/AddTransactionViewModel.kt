@@ -21,7 +21,7 @@ import kotlinx.coroutines.launch
 enum class TransactionType { INCOME, EXPENSE }
 
 sealed interface SaveTransactionResult {
-    data class Success(val budgetWarning: String? = null, val allocationSummary: String? = null) : SaveTransactionResult
+    data class Success(val message: String, val budgetWarning: String? = null) : SaveTransactionResult
     data class Error(val message: String) : SaveTransactionResult
 }
 
@@ -72,10 +72,10 @@ class AddTransactionViewModel(
             val amount = amountText.toBigDecimalOrNull()
             when {
                 type == null -> _saveResults.emit(SaveTransactionResult.Error("Select income or expense."))
-                amount == null || amount <= java.math.BigDecimal.ZERO -> _saveResults.emit(SaveTransactionResult.Error("Amount must be greater than 0."))
-                category == null -> _saveResults.emit(SaveTransactionResult.Error(if (type == TransactionType.INCOME) "Select a source of funds." else "Select a category."))
-                type == TransactionType.EXPENSE && description.trim().isBlank() -> _saveResults.emit(SaveTransactionResult.Error("Description cannot be empty."))
-                occurredAt == null -> _saveResults.emit(SaveTransactionResult.Error("Select a valid date."))
+                amount == null || amount <= java.math.BigDecimal.ZERO -> _saveResults.emit(SaveTransactionResult.Error("Enter a valid amount."))
+                category == null -> _saveResults.emit(SaveTransactionResult.Error(if (type == TransactionType.INCOME) "Select an income source." else "Select a category."))
+                type == TransactionType.EXPENSE && description.trim().isBlank() -> _saveResults.emit(SaveTransactionResult.Error("Name cannot be empty."))
+                occurredAt == null -> _saveResults.emit(SaveTransactionResult.Error("Select a date."))
                 else -> {
                     val amountInCentavos = amount.toCentavosOrNull()
                     if (amountInCentavos == null) {
@@ -98,16 +98,16 @@ class AddTransactionViewModel(
                                     updatedAt = now
                                 )
                             )
-                            var allocationSummary: String? = null
+                            var successMessage = if (type == TransactionType.INCOME) "Income added." else "Expense added."
                             if (type == TransactionType.INCOME) {
-                                allocationSummary = incomeAllocationUseCase
+                                successMessage = incomeAllocationUseCase
                                     .allocateIncome(insertedId, amountInCentavos, occurredAt)
                                     .toSnackSummary()
                             } else if (piggyBankIdForExpense != null) {
                                 piggyBankRepository.deductExpense(piggyBankIdForExpense, amountInCentavos, insertedId)
                             }
                             val warning = if (type == TransactionType.EXPENSE) currentBudgetWarning() else null
-                            _saveResults.emit(SaveTransactionResult.Success(warning, allocationSummary))
+                            _saveResults.emit(SaveTransactionResult.Success(successMessage, warning))
                         } else {
                             val existing = transactionRepository.getTransactionOnce(existingId)
                             if (existing == null) {
@@ -126,10 +126,10 @@ class AddTransactionViewModel(
                             )
                             transactionRepository.update(current)
                             val warning = if (type == TransactionType.EXPENSE) currentBudgetWarning() else null
-                            _saveResults.emit(SaveTransactionResult.Success(warning))
+                            _saveResults.emit(SaveTransactionResult.Success(if (type == TransactionType.INCOME) "Income updated." else "Expense updated.", warning))
                         }
                     } catch (e: Exception) {
-                        _saveResults.emit(SaveTransactionResult.Error(e.message ?: "Transaction could not be saved."))
+                        _saveResults.emit(SaveTransactionResult.Error("Something went wrong. Try again."))
                     } finally {
                         _isSaving.value = false
                     }
@@ -154,10 +154,8 @@ class AddTransactionViewModel(
         movePointRight(2).setScale(0, java.math.RoundingMode.HALF_UP).longValueExact()
     }.getOrNull()?.takeIf { it > 0 }
 
-    private fun com.example.kitatrack.data.local.model.AllocationResult.toSnackSummary(): String? {
-        if (!hasReservedMoney) return null
-        return "Income saved. Debt: ${Formatters.peso(debtAllocatedTotal)} | Piggy: ${Formatters.peso(piggyBankAllocatedTotal)} | Subs: ${Formatters.peso(subscriptionAllocatedTotal)} | Main: ${Formatters.peso(mainBalanceAmount)}"
-    }
+    private fun com.example.kitatrack.data.local.model.AllocationResult.toSnackSummary(): String =
+        if (hasReservedMoney) "Income added. Allocations updated." else "Income added."
 
     private fun com.example.kitatrack.data.local.model.AllocationResult.toPreviewText(): String {
         return buildString {

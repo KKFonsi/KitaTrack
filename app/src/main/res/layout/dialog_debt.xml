@@ -198,43 +198,17 @@
                         app:cornerRadius="12dp" />
 
                     <com.google.android.material.button.MaterialButton
-                        android:id="@+id/debt_freq_every_x_days_chip"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
-                        android:layout_width="0dp"
-                        android:layout_height="match_parent"
-                        android:layout_marginStart="4dp"
-                        android:layout_weight="1"
-                        android:minWidth="0dp"
-                        android:text="Every X"
-                        android:textAllCaps="false"
-                        android:textSize="12sp"
-                        app:cornerRadius="12dp" />
-                </LinearLayout>
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="44dp"
-                    android:layout_marginTop="8dp"
-                    android:orientation="horizontal">
-
-                    <com.google.android.material.button.MaterialButton
                         android:id="@+id/debt_freq_custom_chip"
                         style="@style/Widget.Material3.Button.OutlinedButton"
                         android:layout_width="0dp"
                         android:layout_height="match_parent"
-                        android:layout_marginEnd="4dp"
+                        android:layout_marginStart="4dp"
                         android:layout_weight="1"
                         android:minWidth="0dp"
                         android:text="Custom"
                         android:textAllCaps="false"
                         android:textSize="12sp"
                         app:cornerRadius="12dp" />
-
-                    <Space
-                        android:layout_width="0dp"
-                        android:layout_height="match_parent"
-                        android:layout_marginStart="4dp"
-                        android:layout_weight="2" />
                 </LinearLayout>
             </LinearLayout>
 

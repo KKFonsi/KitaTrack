@@ -59,7 +59,7 @@ class QuickAddActivity : AppCompatActivity() {
 
         title.text = if (income) "Quick Add Income" else "Quick Add Expense"
         subtitle.text = if (income) {
-            "Income will follow Debt > Piggy Bank > Subscription > Main Balance allocation."
+            "Income follows Debt > essential/high bills > savings > other bills."
         } else {
             "Expense will reduce Main Balance."
         }
@@ -157,7 +157,7 @@ class QuickAddActivity : AppCompatActivity() {
         when {
             message.contains("amount", ignoreCase = true) -> amountLayout.error = message
             message.contains("source", ignoreCase = true) || message.contains("category", ignoreCase = true) -> categoryLayout.error = message
-            message.contains("Description", ignoreCase = true) -> descriptionLayout.error = message
+            message.contains("name", ignoreCase = true) -> descriptionLayout.error = message
             else -> Snackbar.make(amountLayout, message, Snackbar.LENGTH_LONG).show()
         }
     }
