@@ -1,9 +1,12 @@
 package com.example.kitatrack.ui.categories
 
+import android.content.res.ColorStateList
+import android.graphics.Color
 import android.os.Bundle
 import android.view.View
 import android.widget.EditText
 import androidx.appcompat.app.AlertDialog
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
@@ -47,6 +50,7 @@ class CategoriesFragment : Fragment(R.layout.fragment_categories) {
         }
         val typeToggle = view.findViewById<MaterialButtonToggleGroup>(R.id.category_type_toggle)
         typeToggle.check(R.id.expense_categories_button)
+        updateSegmentStyle(view, typeToggle.checkedButtonId)
         view.findViewById<MaterialButton>(R.id.add_category_button).setOnClickListener {
             showCategoryDialog(null, currentType(typeToggle))
         }
@@ -65,6 +69,7 @@ class CategoriesFragment : Fragment(R.layout.fragment_categories) {
         }
         typeToggle.addOnButtonCheckedListener { _, _, isChecked ->
             if (isChecked) {
+                updateSegmentStyle(view, typeToggle.checkedButtonId)
                 adapter.submitList(
                     if (currentType(typeToggle) == CategoryRepository.TYPE_EXPENSE) viewModel.expenseCategories.value
                     else viewModel.incomeSources.value
@@ -93,4 +98,25 @@ class CategoriesFragment : Fragment(R.layout.fragment_categories) {
     private fun currentType(toggle: MaterialButtonToggleGroup): String =
         if (toggle.checkedButtonId == R.id.income_sources_button) CategoryRepository.TYPE_INCOME_SOURCE
         else CategoryRepository.TYPE_EXPENSE
+
+    private fun updateSegmentStyle(view: View, selectedId: Int) {
+        val selectedBackground = ColorStateList.valueOf(ContextCompat.getColor(requireContext(), R.color.kitatrack_card_background))
+        val unselectedBackground = ColorStateList.valueOf(Color.TRANSPARENT)
+        val selectedText = ContextCompat.getColor(requireContext(), R.color.kitatrack_primary_text)
+        val unselectedText = ContextCompat.getColor(requireContext(), R.color.kitatrack_secondary_text)
+        val border = ColorStateList.valueOf(Color.TRANSPARENT)
+
+        listOf(
+            view.findViewById<MaterialButton>(R.id.expense_categories_button),
+            view.findViewById<MaterialButton>(R.id.income_sources_button)
+        ).forEach { button ->
+            val selected = button.id == selectedId
+            button.backgroundTintList = if (selected) selectedBackground else unselectedBackground
+            button.setTextColor(if (selected) selectedText else unselectedText)
+            button.strokeColor = border
+            button.strokeWidth = 0
+            button.elevation = if (selected) 2f else 0f
+            button.stateListAnimator = null
+        }
+    }
 }

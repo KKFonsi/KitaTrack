@@ -133,46 +133,11 @@
             android:layout_marginTop="10dp"
             android:visibility="gone" />
 
-        <LinearLayout
+        <include
+            layout="@layout/settings_backup_status"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:orientation="horizontal">
-
-            <TextView
-                android:id="@+id/selected_file_value"
-                android:layout_width="0dp"
-                android:layout_height="48dp"
-                android:layout_weight="1"
-                android:background="@drawable/kt_card_white"
-                android:ellipsize="end"
-                android:gravity="center_vertical"
-                android:maxLines="2"
-                android:paddingStart="12dp"
-                android:paddingEnd="12dp"
-                android:text="No file selected"
-                android:textColor="@color/kitatrack_secondary_text"
-                android:textSize="13sp" />
-
-            <Space
-                android:layout_width="10dp"
-                android:layout_height="1dp" />
-
-            <TextView
-                android:id="@+id/validation_status_value"
-                android:layout_width="0dp"
-                android:layout_height="48dp"
-                android:layout_weight="1"
-                android:background="@drawable/kt_card_white"
-                android:ellipsize="end"
-                android:gravity="center_vertical"
-                android:maxLines="2"
-                android:paddingStart="12dp"
-                android:paddingEnd="12dp"
-                android:text="Select a backup to validate"
-                android:textColor="@color/kitatrack_secondary_text"
-                android:textSize="13sp" />
-        </LinearLayout>
+            android:layout_marginTop="12dp" />
 
         <TextView
             android:layout_width="match_parent"

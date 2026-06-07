@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="kt_chip_stroke">1dp</dimen>
+    <dimen name="kt_chip_selected_stroke">0dp</dimen>
+</resources>

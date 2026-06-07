@@ -19,7 +19,6 @@ import com.example.kitatrack.R
 import com.example.kitatrack.data.local.entity.CategoryEntity
 import com.example.kitatrack.data.local.entity.PiggyBankEntity
 import com.example.kitatrack.util.Formatters
-import com.example.kitatrack.util.ThemePreferences
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.chip.Chip
@@ -150,18 +149,6 @@ class AddTransactionFragment : Fragment(R.layout.fragment_add_transaction) {
 
     private fun bindTopBar(view: View) {
         view.findViewById<MaterialButton>(R.id.back_button).setOnClickListener { findNavController().popBackStack() }
-        view.findViewById<MaterialButton>(R.id.theme_toggle_button).apply {
-            updateThemeToggleIcon(this)
-            setOnClickListener {
-                ThemePreferences.setDarkMode(requireContext(), !ThemePreferences.isDarkModeActive(requireContext()))
-            }
-        }
-    }
-
-    private fun updateThemeToggleIcon(button: MaterialButton) {
-        val isDark = ThemePreferences.isDarkModeActive(requireContext())
-        button.setIconResource(if (isDark) R.drawable.ic_theme_sun else R.drawable.ic_theme_moon)
-        button.contentDescription = if (isDark) "Switch to day mode" else "Switch to dark mode"
     }
 
     private fun applyScreenStyle(view: View, saveButton: MaterialButton) {

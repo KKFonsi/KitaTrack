@@ -1,56 +1,121 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent" android:layout_height="match_parent"
-    android:background="@drawable/kt_screen_background" android:orientation="vertical" android:padding="20dp">
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/kt_screen_background"
+    android:orientation="vertical"
+    android:paddingStart="20dp"
+    android:paddingTop="22dp"
+    android:paddingEnd="20dp"
+    android:paddingBottom="20dp">
+
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="48dp"
         android:gravity="center_vertical"
         android:orientation="horizontal">
+
         <com.google.android.material.button.MaterialButton
             android:id="@+id/categories_back_button"
             style="@style/Widget.Material3.Button.TextButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:backgroundTint="@color/kitatrack_chip_neutral_background"
+            android:insetLeft="0dp"
+            android:insetTop="0dp"
+            android:insetRight="0dp"
+            android:insetBottom="0dp"
             android:minWidth="0dp"
-            android:text="Back"
-            android:textAllCaps="false" />
-        <TextView android:layout_width="0dp" android:layout_height="wrap_content"
+            android:text=""
+            app:cornerRadius="22dp"
+            app:icon="@drawable/ic_arrow_back_24"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
+            app:iconTint="@color/kitatrack_primary_text" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
             android:layout_weight="1"
-            android:text="Categories" android:textColor="@color/kitatrack_primary_text"
-            android:textSize="28sp" android:textStyle="bold" />
+            android:text="Categories"
+            android:textColor="@color/kitatrack_primary_text"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/add_category_button"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:backgroundTint="@color/kitatrack_primary_green"
+            android:minWidth="0dp"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:text="+ Add"
+            android:textAllCaps="false"
+            android:textColor="@color/white"
+            app:cornerRadius="14dp"
+            app:strokeWidth="0dp" />
     </LinearLayout>
+
     <com.google.android.material.button.MaterialButtonToggleGroup
         android:id="@+id/category_type_toggle"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        app:singleSelection="true"
+        android:layout_height="48dp"
+        android:layout_marginTop="18dp"
+        android:background="@drawable/kt_form_field_background"
+        android:padding="4dp"
         app:selectionRequired="true"
-        xmlns:app="http://schemas.android.com/apk/res-auto">
+        app:singleSelection="true">
+
         <com.google.android.material.button.MaterialButton
             android:id="@+id/expense_categories_button"
-            style="@style/Widget.Material3.Button.OutlinedButton"
+            style="@style/Widget.Material3.Button.TextButton"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_weight="1"
+            android:insetLeft="0dp"
+            android:insetTop="0dp"
+            android:insetRight="0dp"
+            android:insetBottom="0dp"
             android:text="Expenses"
-            android:textAllCaps="false" />
+            android:textAllCaps="false"
+            app:cornerRadius="12dp" />
+
         <com.google.android.material.button.MaterialButton
             android:id="@+id/income_sources_button"
-            style="@style/Widget.Material3.Button.OutlinedButton"
+            style="@style/Widget.Material3.Button.TextButton"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_weight="1"
+            android:insetLeft="0dp"
+            android:insetTop="0dp"
+            android:insetRight="0dp"
+            android:insetBottom="0dp"
             android:text="Income Sources"
-            android:textAllCaps="false" />
+            android:textAllCaps="false"
+            app:cornerRadius="12dp" />
     </com.google.android.material.button.MaterialButtonToggleGroup>
-    <com.google.android.material.button.MaterialButton android:id="@+id/add_category_button"
-        android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:layout_marginTop="16dp" android:minHeight="48dp" android:text="Add custom category"
-        android:textAllCaps="false" />
-    <androidx.recyclerview.widget.RecyclerView android:id="@+id/categories_list"
-        android:layout_width="match_parent" android:layout_height="0dp"
-        android:layout_marginTop="16dp" android:layout_weight="1" />
-</LinearLayout>
 
+    <com.google.android.material.card.MaterialCardView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="16dp"
+        android:layout_weight="1"
+        app:cardBackgroundColor="@color/kitatrack_card_background"
+        app:cardCornerRadius="18dp"
+        app:cardElevation="0dp"
+        app:strokeColor="@color/kitatrack_subtle_border"
+        app:strokeWidth="1dp">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/categories_list"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp" />
+    </com.google.android.material.card.MaterialCardView>
+</LinearLayout>

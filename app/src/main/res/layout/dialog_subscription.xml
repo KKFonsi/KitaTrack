@@ -1,44 +1,318 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:id="@+id/subscription_dialog_scroll"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:scrollbars="vertical">
-    <LinearLayout
+    android:background="@drawable/kt_bottom_sheet_background"
+    android:orientation="vertical"
+    android:paddingStart="22dp"
+    android:paddingTop="12dp"
+    android:paddingEnd="22dp"
+    android:paddingBottom="20dp">
+
+    <View
+        android:layout_width="36dp"
+        android:layout_height="4dp"
+        android:layout_gravity="center_horizontal"
+        android:background="@drawable/kt_sheet_handle" />
+
+    <TextView
+        android:id="@+id/subscription_sheet_title"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:paddingStart="4dp"
-        android:paddingTop="8dp"
-        android:paddingEnd="4dp"
-        android:paddingBottom="8dp">
-        <com.google.android.material.textfield.TextInputLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Subscription name">
-            <com.google.android.material.textfield.TextInputEditText android:id="@+id/subscription_name_input" android:layout_width="match_parent" android:layout_height="wrap_content" android:singleLine="true"/>
-        </com.google.android.material.textfield.TextInputLayout>
-        <com.google.android.material.textfield.TextInputLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:hint="Amount">
-            <com.google.android.material.textfield.TextInputEditText android:id="@+id/subscription_amount_input" android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="numberDecimal" android:singleLine="true"/>
-        </com.google.android.material.textfield.TextInputLayout>
-        <com.google.android.material.textfield.TextInputLayout style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:hint="Billing cycle" app:endIconMode="dropdown_menu">
-            <com.google.android.material.textfield.MaterialAutoCompleteTextView android:id="@+id/subscription_cycle_input" android:layout_width="match_parent" android:layout_height="wrap_content" android:clickable="true" android:focusable="false" android:inputType="none" android:singleLine="true"/>
-        </com.google.android.material.textfield.TextInputLayout>
-        <com.google.android.material.textfield.TextInputLayout android:id="@+id/subscription_interval_layout" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:hint="Every X days">
-            <com.google.android.material.textfield.TextInputEditText android:id="@+id/subscription_interval_input" android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="number" android:singleLine="true"/>
-        </com.google.android.material.textfield.TextInputLayout>
-        <com.google.android.material.textfield.TextInputLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:hint="Next billing date">
-            <com.google.android.material.textfield.TextInputEditText android:id="@+id/subscription_due_input" android:layout_width="match_parent" android:layout_height="wrap_content" android:clickable="true" android:focusable="false" android:singleLine="true"/>
-        </com.google.android.material.textfield.TextInputLayout>
-        <com.google.android.material.textfield.TextInputLayout style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:hint="Category" app:endIconMode="dropdown_menu">
-            <com.google.android.material.textfield.MaterialAutoCompleteTextView android:id="@+id/subscription_category_input" android:layout_width="match_parent" android:layout_height="wrap_content" android:clickable="true" android:focusable="false" android:inputType="none" android:singleLine="true"/>
-        </com.google.android.material.textfield.TextInputLayout>
-        <com.google.android.material.textfield.TextInputLayout style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:hint="Importance" app:endIconMode="dropdown_menu">
-            <com.google.android.material.textfield.MaterialAutoCompleteTextView android:id="@+id/subscription_importance_input" android:layout_width="match_parent" android:layout_height="wrap_content" android:clickable="true" android:focusable="false" android:inputType="none" android:singleLine="true"/>
-        </com.google.android.material.textfield.TextInputLayout>
-        <com.google.android.material.textfield.TextInputLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:hint="Notes">
-            <com.google.android.material.textfield.TextInputEditText android:id="@+id/subscription_notes_input" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="top|start" android:maxLines="3" android:minLines="2"/>
-        </com.google.android.material.textfield.TextInputLayout>
-        <com.google.android.material.switchmaterial.SwitchMaterial android:id="@+id/subscription_reserve_switch" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:text="Reserve On"/>
-        <com.google.android.material.switchmaterial.SwitchMaterial android:id="@+id/subscription_reminder_switch" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Reminder On"/>
-        <com.google.android.material.switchmaterial.SwitchMaterial android:id="@+id/subscription_active_switch" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Active"/>
-    </LinearLayout>
-</androidx.core.widget.NestedScrollView>
+        android:layout_marginTop="20dp"
+        android:text="Add Subscription"
+        android:textColor="@color/kitatrack_primary_text"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/subscription_dialog_scroll"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:scrollbars="vertical">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingTop="18dp">
+
+            <TextView style="@style/KitaTrackFormLabel" android:text="SUBSCRIPTION NAME" />
+            <com.google.android.material.textfield.TextInputLayout style="@style/KitaTrackFormField" android:hint="e.g. GPT Plus, Netflix">
+                <com.google.android.material.textfield.TextInputEditText android:id="@+id/subscription_name_input" style="@style/KitaTrackFormEditText" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <TextView style="@style/KitaTrackFormLabel" android:layout_marginTop="14dp" android:text="AMOUNT" />
+            <com.google.android.material.textfield.TextInputLayout style="@style/KitaTrackFormField.Amount" android:hint="0.00">
+                <com.google.android.material.textfield.TextInputEditText android:id="@+id/subscription_amount_input" style="@style/KitaTrackFormEditText" android:inputType="numberDecimal" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <TextView style="@style/KitaTrackFormLabel" android:layout_marginTop="14dp" android:text="BILLING CYCLE" />
+            <LinearLayout
+                android:id="@+id/subscription_cycle_chip_group"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:orientation="vertical">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="44dp"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/subscription_cycle_monthly_chip"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_marginEnd="4dp"
+                        android:layout_weight="1"
+                        android:minWidth="0dp"
+                        android:text="Monthly"
+                        android:textAllCaps="false"
+                        android:textSize="12sp"
+                        app:cornerRadius="12dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/subscription_cycle_yearly_chip"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_marginStart="4dp"
+                        android:layout_marginEnd="4dp"
+                        android:layout_weight="1"
+                        android:minWidth="0dp"
+                        android:text="Yearly"
+                        android:textAllCaps="false"
+                        android:textSize="12sp"
+                        app:cornerRadius="12dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/subscription_cycle_weekly_chip"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_marginStart="4dp"
+                        android:layout_weight="1"
+                        android:minWidth="0dp"
+                        android:text="Weekly"
+                        android:textAllCaps="false"
+                        android:textSize="12sp"
+                        app:cornerRadius="12dp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="44dp"
+                    android:layout_marginTop="8dp"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/subscription_cycle_every_x_days_chip"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_marginEnd="4dp"
+                        android:layout_weight="1"
+                        android:minWidth="0dp"
+                        android:text="Every X"
+                        android:textAllCaps="false"
+                        android:textSize="12sp"
+                        app:cornerRadius="12dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/subscription_cycle_custom_chip"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_marginStart="4dp"
+                        android:layout_marginEnd="4dp"
+                        android:layout_weight="1"
+                        android:minWidth="0dp"
+                        android:text="Custom"
+                        android:textAllCaps="false"
+                        android:textSize="12sp"
+                        app:cornerRadius="12dp" />
+
+                    <Space
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_marginStart="4dp"
+                        android:layout_weight="1" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/subscription_interval_layout"
+                style="@style/KitaTrackFormField"
+                android:layout_marginTop="12dp"
+                android:hint="Every X days">
+                <com.google.android.material.textfield.TextInputEditText android:id="@+id/subscription_interval_input" style="@style/KitaTrackFormEditText" android:inputType="number" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <TextView style="@style/KitaTrackFormLabel" android:layout_marginTop="14dp" android:text="NEXT BILLING DATE" />
+            <com.google.android.material.textfield.TextInputLayout
+                style="@style/KitaTrackFormField"
+                android:hint="Pick a date"
+                app:startIconDrawable="@drawable/ic_calendar_24"
+                app:startIconTint="@color/kitatrack_secondary_text">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/subscription_due_input"
+                    style="@style/KitaTrackFormEditText"
+                    android:clickable="true"
+                    android:focusable="false" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <TextView style="@style/KitaTrackFormLabel" android:layout_marginTop="14dp" android:text="CATEGORY" />
+            <com.google.android.material.textfield.TextInputLayout
+                style="@style/KitaTrackFormField.Dropdown"
+                android:hint="Select a category"
+                app:endIconMode="dropdown_menu">
+                <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                    android:id="@+id/subscription_category_input"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:clickable="true"
+                    android:focusable="false"
+                    android:inputType="none"
+                    android:singleLine="true"
+                    android:textColor="@color/kitatrack_primary_text"
+                    android:textSize="14sp" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <TextView style="@style/KitaTrackFormLabel" android:layout_marginTop="14dp" android:text="PRIORITY" />
+            <LinearLayout
+                android:id="@+id/subscription_priority_chip_row"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:orientation="vertical">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="44dp"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/subscription_priority_high_chip"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_marginEnd="4dp"
+                        android:layout_weight="1"
+                        android:minWidth="0dp"
+                        android:text="High"
+                        android:textAllCaps="false"
+                        android:textSize="12sp"
+                        app:cornerRadius="12dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/subscription_priority_medium_chip"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_marginStart="4dp"
+                        android:layout_marginEnd="4dp"
+                        android:layout_weight="1"
+                        android:minWidth="0dp"
+                        android:text="Medium"
+                        android:textAllCaps="false"
+                        android:textSize="12sp"
+                        app:cornerRadius="12dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/subscription_priority_low_chip"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_marginStart="4dp"
+                        android:layout_weight="1"
+                        android:minWidth="0dp"
+                        android:text="Low"
+                        android:textAllCaps="false"
+                        android:textSize="12sp"
+                        app:cornerRadius="12dp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="44dp"
+                    android:layout_marginTop="8dp"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/subscription_priority_essential_chip"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_marginEnd="4dp"
+                        android:layout_weight="1"
+                        android:minWidth="0dp"
+                        android:text="Essential"
+                        android:textAllCaps="false"
+                        android:textSize="12sp"
+                        app:cornerRadius="12dp" />
+
+                    <Space
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_marginStart="4dp"
+                        android:layout_weight="2" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <TextView style="@style/KitaTrackFormLabel" android:layout_marginTop="14dp" android:text="NOTES" />
+            <com.google.android.material.textfield.TextInputLayout style="@style/KitaTrackFormField" android:hint="Any notes...">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/subscription_notes_input"
+                    style="@style/KitaTrackFormEditText"
+                    android:gravity="top|start"
+                    android:maxLines="3"
+                    android:minLines="2" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/subscription_reserve_switch"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:text="Reserve On"
+                android:textColor="@color/kitatrack_primary_text" />
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/subscription_reminder_switch"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Reminder On"
+                android:textColor="@color/kitatrack_primary_text" />
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/subscription_active_switch"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Active"
+                android:textColor="@color/kitatrack_primary_text" />
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/subscription_save_button"
+        android:layout_width="match_parent"
+        android:layout_height="54dp"
+        android:layout_marginTop="14dp"
+        android:backgroundTint="@color/kitatrack_primary_green"
+        android:text="Save Subscription"
+        android:textAllCaps="false"
+        android:textColor="@color/white"
+        app:cornerRadius="14dp" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/subscription_cancel_button"
+        style="@style/Widget.Material3.Button.TextButton"
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:text="Cancel"
+        android:textAllCaps="false"
+        android:textColor="@color/kitatrack_secondary_text" />
+</LinearLayout>

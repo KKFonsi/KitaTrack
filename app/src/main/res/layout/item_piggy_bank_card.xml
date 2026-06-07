@@ -1,14 +1,123 @@
 <?xml version="1.0" encoding="utf-8"?>
 <com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp"
-    app:cardBackgroundColor="@color/kitatrack_soft_warning_background" app:cardCornerRadius="24dp" app:strokeColor="@color/kitatrack_subtle_border" app:strokeWidth="1dp">
-    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
-        <TextView android:id="@+id/piggy_name" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:maxLines="1" android:textColor="@color/kitatrack_primary_text" android:textSize="18sp" android:textStyle="bold"/>
-        <TextView android:id="@+id/piggy_amounts" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:textColor="@color/kitatrack_primary_text" android:textSize="16sp"/>
-        <ProgressBar android:id="@+id/piggy_progress" style="?android:attr/progressBarStyleHorizontal" android:layout_width="match_parent" android:layout_height="8dp" android:layout_marginTop="12dp" android:max="100" android:progressTint="@color/kitatrack_primary_green" android:progressBackgroundTint="@color/kitatrack_divider"/>
-        <TextView android:id="@+id/piggy_meta" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:textColor="@color/kitatrack_secondary_text"/>
-        <TextView android:id="@+id/piggy_warning" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:background="@drawable/kt_chip_yellow" android:paddingLeft="10dp" android:paddingTop="4dp" android:paddingRight="10dp" android:paddingBottom="4dp" android:textColor="@color/kitatrack_secondary_text" android:textSize="12sp" android:textStyle="bold"/>
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="12dp"
+    app:cardBackgroundColor="@color/kitatrack_plan_card_background"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="0dp"
+    app:strokeColor="@color/kitatrack_subtle_border"
+    app:strokeWidth="1dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="14dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/piggy_name"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="@color/kitatrack_primary_text"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/piggy_status"
+                style="@style/KitaTrackStatusChipText"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/piggy_amounts"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:textColor="@color/kitatrack_secondary_text"
+            android:textSize="12sp"
+            android:visibility="gone" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/piggy_saved_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/kitatrack_primary_green"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/piggy_saved_context"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:layout_weight="1"
+                android:textColor="@color/kitatrack_secondary_text"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/piggy_meta"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:textColor="@color/kitatrack_secondary_text"
+            android:textSize="12sp" />
+
+        <ProgressBar
+            android:id="@+id/piggy_progress"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="7dp"
+            android:layout_marginTop="14dp"
+            android:max="100"
+            android:progressBackgroundTint="@color/kitatrack_divider"
+            android:progressTint="@color/kitatrack_primary_green" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/piggy_saved_chip"
+                style="@style/KitaTrackStatusChipText"
+                android:background="@drawable/kt_chip_green"
+                android:textColor="@color/kitatrack_secondary_text"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/piggy_allocation_chip"
+                style="@style/KitaTrackStatusChipText"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/kt_chip_green"
+                android:textColor="@color/kitatrack_secondary_text"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/piggy_warning"
+            style="@style/KitaTrackStatusChipText"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/kt_chip_yellow"
+            android:textColor="@color/kitatrack_secondary_text" />
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>
-

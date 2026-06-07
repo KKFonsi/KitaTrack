@@ -8,7 +8,9 @@ import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.content.res.ColorStateList
+import android.graphics.Color
 import androidx.core.content.ContextCompat
+import androidx.core.widget.NestedScrollView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
@@ -23,7 +25,9 @@ import com.example.kitatrack.data.repository.BudgetRepository
 import com.example.kitatrack.data.repository.DebtRepository
 import com.example.kitatrack.data.repository.SubscriptionRepository
 import com.example.kitatrack.util.Formatters
+import com.example.kitatrack.util.ThemePreferences
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.switchmaterial.SwitchMaterial
@@ -41,6 +45,7 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
     private val refreshedPiggyIds = mutableSetOf<Long>()
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        bindThemeToggle(view)
         view.findViewById<MaterialButton>(R.id.add_budget_button).setOnClickListener { showBudgetDialog(null) }
         view.findViewById<MaterialButton>(R.id.add_debt_button).setOnClickListener { showDebtDialog(null) }
         view.findViewById<MaterialButton>(R.id.add_subscription_button).setOnClickListener { showSubscriptionDialog(null) }
@@ -73,9 +78,25 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
         }
     }
 
+    private fun bindThemeToggle(view: View) {
+        view.findViewById<MaterialButton>(R.id.plans_theme_toggle_button).apply {
+            updateThemeToggleIcon(this)
+            setOnClickListener {
+                ThemePreferences.setDarkMode(requireContext(), !ThemePreferences.isDarkModeActive(requireContext()))
+            }
+        }
+    }
+
+    private fun updateThemeToggleIcon(button: MaterialButton) {
+        val isDark = ThemePreferences.isDarkModeActive(requireContext())
+        button.setIconResource(if (isDark) R.drawable.ic_theme_sun else R.drawable.ic_theme_moon)
+        button.contentDescription = if (isDark) "Switch to day mode" else "Switch to dark mode"
+    }
+
     private fun renderDebts(view: View, items: List<DebtProgress>) {
         val container = view.findViewById<LinearLayout>(R.id.debt_list)
         val empty = view.findViewById<TextView>(R.id.debt_empty_state)
+        view.findViewById<TextView>(R.id.debt_count_badge).text = items.size.toString()
         container.removeAllViews()
         empty.visibility = if (items.isEmpty()) View.VISIBLE else View.GONE
         items.sortedWith(compareByDescending<DebtProgress> { it.isOverdue }.thenByDescending { it.isUpcoming }.thenBy { it.debt.nextDueDate ?: Long.MAX_VALUE }).forEach { item ->
@@ -104,6 +125,26 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
                 append(item.statusLabel)
                 append(" · Due ${item.dueLabel}")
                 debt.installmentAmount?.let { append(" · ${Formatters.peso(it)} payment") }
+            }
+            card.findViewById<TextView>(R.id.debt_amounts).visibility = View.GONE
+            card.findViewById<LinearLayout>(R.id.debt_figures_row).visibility = View.VISIBLE
+            card.findViewById<TextView>(R.id.debt_meta).text =
+                "${if (debt.debtType == DebtRepository.TYPE_I_OWE) "Money I owe" else "Money owed to me"} · ${debt.personName ?: "No source"}"
+            card.findViewById<TextView>(R.id.debt_remaining_value).apply {
+                text = Formatters.peso(debt.remainingAmount)
+                setTextColor(ContextCompat.getColor(requireContext(), if (debt.debtType == DebtRepository.TYPE_I_OWE) R.color.kitatrack_expense_red else R.color.kitatrack_primary_green))
+            }
+            card.findViewById<TextView>(R.id.debt_payment_value).text = Formatters.peso(paymentDueForThisTerm(debt))
+            card.findViewById<TextView>(R.id.debt_paid_value).text = Formatters.peso(debt.amountPaid)
+            card.findViewById<TextView>(R.id.debt_status).text = item.statusLabel
+            card.findViewById<TextView>(R.id.debt_due_chip).apply {
+                visibility = View.VISIBLE
+                text = "Due ${item.dueLabel}"
+                tintChip(this, if (item.isOverdue) R.color.kitatrack_chip_red_background else R.color.kitatrack_chip_neutral_background, if (item.isOverdue) R.color.kitatrack_expense_red else R.color.kitatrack_secondary_text)
+            }
+            card.findViewById<TextView>(R.id.debt_percent).apply {
+                visibility = View.VISIBLE
+                text = "${item.progressPercent.coerceAtMost(100)}% paid off"
             }
             card.setOnClickListener { showDebtDetails(item) }
             card.setOnLongClickListener {
@@ -308,11 +349,9 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
         val dialog = layoutInflater.inflate(R.layout.dialog_debt, null, false)
         val name = dialog.findViewById<TextInputEditText>(R.id.debt_name_input)
         val person = dialog.findViewById<TextInputEditText>(R.id.debt_person_input)
-        val type = dialog.findViewById<AutoCompleteTextView>(R.id.debt_type_input)
         val total = dialog.findViewById<TextInputEditText>(R.id.debt_total_input)
         val paid = dialog.findViewById<TextInputEditText>(R.id.debt_paid_input)
         val installment = dialog.findViewById<TextInputEditText>(R.id.debt_installment_input)
-        val frequency = dialog.findViewById<AutoCompleteTextView>(R.id.debt_frequency_input)
         val intervalLayout = dialog.findViewById<TextInputLayout>(R.id.debt_interval_layout)
         val interval = dialog.findViewById<TextInputEditText>(R.id.debt_interval_input)
         val due = dialog.findViewById<TextInputEditText>(R.id.debt_due_input)
@@ -320,37 +359,59 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
         val autoReserve = dialog.findViewById<SwitchMaterial>(R.id.debt_auto_reserve_switch)
         val reminder = dialog.findViewById<SwitchMaterial>(R.id.debt_reminder_switch)
         val active = dialog.findViewById<SwitchMaterial>(R.id.debt_active_switch)
-        val typeLabels = listOf("Money I owe", "Money others owe me")
-        val typeValues = listOf(DebtRepository.TYPE_I_OWE, DebtRepository.TYPE_OWED_TO_ME)
-        val freqLabels = listOf("One-time", "Daily", "Weekly", "Bi-weekly", "Monthly", "Every X days", "Custom")
-        val freqValues = listOf(DebtRepository.FREQ_ONE_TIME, DebtRepository.FREQ_DAILY, DebtRepository.FREQ_WEEKLY, DebtRepository.FREQ_BI_WEEKLY, DebtRepository.FREQ_MONTHLY, DebtRepository.FREQ_EVERY_X_DAYS, DebtRepository.FREQ_CUSTOM)
+        val context = dialog.findViewById<TextView>(R.id.debt_type_context)
+        dialog.findViewById<TextView>(R.id.debt_sheet_title).text = if (existing == null) "Add Debt" else "Edit Debt"
+        val typeChips = listOf(
+            dialog.findViewById<MaterialButton>(R.id.debt_i_owe_chip) to DebtRepository.TYPE_I_OWE,
+            dialog.findViewById<MaterialButton>(R.id.debt_owed_to_me_chip) to DebtRepository.TYPE_OWED_TO_ME
+        )
+        val frequencyChips = listOf(
+            dialog.findViewById<MaterialButton>(R.id.debt_freq_one_time_chip) to DebtRepository.FREQ_ONE_TIME,
+            dialog.findViewById<MaterialButton>(R.id.debt_freq_weekly_chip) to DebtRepository.FREQ_WEEKLY,
+            dialog.findViewById<MaterialButton>(R.id.debt_freq_bi_weekly_chip) to DebtRepository.FREQ_BI_WEEKLY,
+            dialog.findViewById<MaterialButton>(R.id.debt_freq_monthly_chip) to DebtRepository.FREQ_MONTHLY,
+            dialog.findViewById<MaterialButton>(R.id.debt_freq_daily_chip) to DebtRepository.FREQ_DAILY,
+            dialog.findViewById<MaterialButton>(R.id.debt_freq_every_x_days_chip) to DebtRepository.FREQ_EVERY_X_DAYS,
+            dialog.findViewById<MaterialButton>(R.id.debt_freq_custom_chip) to DebtRepository.FREQ_CUSTOM
+        )
         var selectedType = existing?.debt?.debtType ?: DebtRepository.TYPE_I_OWE
         var selectedFreq = existing?.debt?.paymentFrequency ?: DebtRepository.FREQ_ONE_TIME
         var selectedDue = existing?.debt?.nextDueDate ?: existing?.debt?.dueDate
-        type.setAdapter(ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, typeLabels))
-        frequency.setAdapter(ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, freqLabels))
-        configureDropdown(type)
-        configureDropdown(frequency)
         name.setText(existing?.debt?.name)
         person.setText(existing?.debt?.personName)
         total.setText(existing?.debt?.totalAmount?.toBigDecimal()?.movePointLeft(2)?.stripTrailingZeros()?.toPlainString())
-        paid.setText(existing?.debt?.amountPaid?.toBigDecimal()?.movePointLeft(2)?.stripTrailingZeros()?.toPlainString() ?: "0")
+        paid.setText(existing?.debt?.amountPaid?.toBigDecimal()?.movePointLeft(2)?.stripTrailingZeros()?.toPlainString() ?: "0.00")
         installment.setText(existing?.debt?.installmentAmount?.toBigDecimal()?.movePointLeft(2)?.stripTrailingZeros()?.toPlainString())
         interval.setText(existing?.debt?.customIntervalDays?.toString())
         selectedDue?.let { due.setText(Formatters.date(it)) }
         notes.setText(existing?.debt?.notes)
-        type.setText(typeLabels[typeValues.indexOf(selectedType).coerceAtLeast(0)], false)
-        frequency.setText(freqLabels[freqValues.indexOf(selectedFreq).coerceAtLeast(0)], false)
         autoReserve.isChecked = existing?.debt?.autoReserveEnabled ?: true
         reminder.isChecked = existing?.debt?.reminderEnabled ?: false
         active.isChecked = existing?.debt?.isActive ?: true
         fun updateVisibility() {
             intervalLayout.visibility = if (selectedFreq in setOf(DebtRepository.FREQ_EVERY_X_DAYS, DebtRepository.FREQ_CUSTOM)) View.VISIBLE else View.GONE
             autoReserve.visibility = if (selectedType == DebtRepository.TYPE_I_OWE) View.VISIBLE else View.GONE
+            context.text = if (selectedType == DebtRepository.TYPE_I_OWE) {
+                "Creates a Debt Reserve: money is set aside from your balance to pay this debt."
+            } else {
+                "Tracked separately. It does not affect Main Balance until you record the received money."
+            }
+            typeChips.forEach { (chip, value) -> styleChoiceChip(chip, value == selectedType) }
+            frequencyChips.forEach { (chip, value) -> styleChoiceChip(chip, value == selectedFreq) }
         }
         updateVisibility()
-        type.setOnItemClickListener { _, _, pos, _ -> selectedType = typeValues[pos]; updateVisibility() }
-        frequency.setOnItemClickListener { _, _, pos, _ -> selectedFreq = freqValues[pos]; updateVisibility() }
+        typeChips.forEach { (chip, value) ->
+            chip.setOnClickListener {
+                selectedType = value
+                updateVisibility()
+            }
+        }
+        frequencyChips.forEach { (chip, value) ->
+            chip.setOnClickListener {
+                selectedFreq = value
+                updateVisibility()
+            }
+        }
         due.setOnClickListener {
             val cal = java.util.Calendar.getInstance()
             android.app.DatePickerDialog(requireContext(), { _, y, m, d ->
@@ -358,11 +419,9 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
                 due.setText(Formatters.date(selectedDue!!))
             }, cal.get(java.util.Calendar.YEAR), cal.get(java.util.Calendar.MONTH), cal.get(java.util.Calendar.DAY_OF_MONTH)).show()
         }
-        val alert = MaterialAlertDialogBuilder(requireContext())
-            .setTitle(if (existing == null) "Add Debt" else "Edit Debt")
-            .setView(dialog)
-            .setNegativeButton("Cancel", null)
-            .setPositiveButton("Save") { _, _ ->
+        val sheet = showPlanSheet(dialog, R.id.debt_dialog_scroll)
+        dialog.findViewById<MaterialButton>(R.id.debt_cancel_button).setOnClickListener { sheet.dismiss() }
+        dialog.findViewById<MaterialButton>(R.id.debt_save_button).setOnClickListener {
                 debtViewModel.save(
                     existing?.debt?.id,
                     name.text.toString(),
@@ -383,13 +442,8 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
                     active.isChecked,
                     debtResultHandler()
                 )
-            }.create()
-        alert.setOnShowListener {
-            dialog.findViewById<androidx.core.widget.NestedScrollView>(R.id.debt_dialog_scroll)?.let { scroll ->
-                scroll.layoutParams = scroll.layoutParams.apply { height = (resources.displayMetrics.heightPixels * 0.62f).toInt() }
-            }
+            sheet.dismiss()
         }
-        alert.show()
     }
 
     private fun configureDropdown(dropdown: AutoCompleteTextView) {
@@ -403,9 +457,71 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
         }
     }
 
+    private fun tintChip(chip: TextView, backgroundColor: Int, textColor: Int) {
+        chip.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(requireContext(), backgroundColor))
+        chip.setTextColor(ContextCompat.getColor(requireContext(), textColor))
+    }
+
+    private fun showPlanSheet(content: View, scrollId: Int?, maxHeightRatio: Float = 0.58f): BottomSheetDialog {
+        val sheet = BottomSheetDialog(requireContext())
+        sheet.setContentView(content)
+        sheet.setOnShowListener {
+            sheet.window?.setDimAmount(0.42f)
+            sheet.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet)?.apply {
+                setBackgroundColor(Color.TRANSPARENT)
+            }
+            scrollId?.let { id ->
+                content.findViewById<NestedScrollView>(id)?.let { scroll ->
+                    scroll.layoutParams = scroll.layoutParams.apply {
+                        height = (resources.displayMetrics.heightPixels * maxHeightRatio).toInt()
+                    }
+                }
+            }
+        }
+        sheet.show()
+        return sheet
+    }
+
+    private fun styleChoiceChip(button: MaterialButton, selected: Boolean) {
+        button.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(requireContext(), if (selected) R.color.kitatrack_primary_green else R.color.kitatrack_secondary_background))
+        button.setTextColor(ContextCompat.getColor(requireContext(), if (selected) R.color.white else R.color.kitatrack_secondary_text))
+        button.strokeColor = ColorStateList.valueOf(ContextCompat.getColor(requireContext(), if (selected) R.color.kitatrack_primary_green else R.color.kitatrack_subtle_border))
+        button.strokeWidth = resources.getDimensionPixelSize(if (selected) R.dimen.kt_chip_selected_stroke else R.dimen.kt_chip_stroke)
+        button.isAllCaps = false
+        button.stateListAnimator = null
+    }
+
+    private fun stylePriorityChip(button: MaterialButton, selected: Boolean, value: String) {
+        val background = if (!selected) {
+            R.color.kitatrack_secondary_background
+        } else {
+            when (value) {
+                SubscriptionRepository.IMPORTANCE_HIGH, SubscriptionRepository.IMPORTANCE_ESSENTIAL -> R.color.kitatrack_chip_red_background
+                SubscriptionRepository.IMPORTANCE_MEDIUM -> R.color.kitatrack_chip_yellow_background
+                else -> R.color.kitatrack_chip_neutral_background
+            }
+        }
+        val text = if (!selected) {
+            R.color.kitatrack_secondary_text
+        } else {
+            when (value) {
+                SubscriptionRepository.IMPORTANCE_HIGH, SubscriptionRepository.IMPORTANCE_ESSENTIAL -> R.color.kitatrack_expense_red
+                SubscriptionRepository.IMPORTANCE_MEDIUM -> R.color.kitatrack_warning_yellow
+                else -> R.color.kitatrack_secondary_text
+            }
+        }
+        button.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(requireContext(), background))
+        button.setTextColor(ContextCompat.getColor(requireContext(), text))
+        button.strokeColor = ColorStateList.valueOf(ContextCompat.getColor(requireContext(), if (selected) background else R.color.kitatrack_subtle_border))
+        button.strokeWidth = resources.getDimensionPixelSize(R.dimen.kt_chip_stroke)
+        button.isAllCaps = false
+        button.stateListAnimator = null
+    }
+
     private fun renderSubscriptions(view: View, items: List<SubscriptionProgress>) {
         val container = view.findViewById<LinearLayout>(R.id.subscription_list)
         val empty = view.findViewById<TextView>(R.id.subscription_empty_state)
+        view.findViewById<TextView>(R.id.subscription_count_badge).text = items.size.toString()
         container.removeAllViews()
         empty.visibility = if (items.isEmpty()) View.VISIBLE else View.GONE
         items.sortedWith(compareByDescending<SubscriptionProgress> { it.isOverdue }.thenByDescending { it.isUpcoming }.thenBy { it.subscription.nextBillingDate ?: Long.MAX_VALUE }).forEach { item ->
@@ -414,7 +530,19 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
             card.findViewById<TextView>(R.id.subscription_name).text = sub.name
             card.findViewById<TextView>(R.id.subscription_amount).text = Formatters.peso(sub.amount)
             card.findViewById<TextView>(R.id.subscription_meta).text =
-                "${item.cycleLabel} | Next billing: ${item.dueLabel} | ${sub.importance.lowercase().replaceFirstChar { it.uppercase() }}"
+                "${item.cycleLabel} · Next ${item.dueLabel}"
+            card.findViewById<TextView>(R.id.subscription_priority).apply {
+                visibility = View.VISIBLE
+                text = "${sub.importance.lowercase().replaceFirstChar { it.uppercase() }} priority"
+                tintChip(this, when (sub.importance.uppercase()) {
+                    "HIGH" -> R.color.kitatrack_chip_red_background
+                    "LOW" -> R.color.kitatrack_chip_neutral_background
+                    else -> R.color.kitatrack_chip_yellow_background
+                }, when (sub.importance.uppercase()) {
+                    "HIGH" -> R.color.kitatrack_expense_red
+                    else -> R.color.kitatrack_secondary_text
+                })
+            }
             card.findViewById<ProgressBar>(R.id.subscription_reserve_progress).apply {
                 visibility = if (sub.reserveEnabled) View.VISIBLE else View.GONE
                 progress = item.reservePercent
@@ -424,8 +552,10 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
                     else -> R.color.kitatrack_primary_green
                 }))
             }
-            card.findViewById<TextView>(R.id.subscription_status).text =
-                if (sub.reserveEnabled) "Reserve On" else "Reserve Off"
+            card.findViewById<TextView>(R.id.subscription_status).apply {
+                text = if (sub.reserveEnabled) "Reserved" else "Reserve Off"
+                tintChip(this, if (sub.reserveEnabled) R.color.kitatrack_chip_green_background else R.color.kitatrack_chip_neutral_background, if (sub.reserveEnabled) R.color.kitatrack_primary_green else R.color.kitatrack_secondary_text)
+            }
             card.setOnClickListener { showSubscriptionDetails(item) }
             container.addView(card)
         }
@@ -490,46 +620,62 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
         val dialog = layoutInflater.inflate(R.layout.dialog_subscription, null, false)
         val name = dialog.findViewById<TextInputEditText>(R.id.subscription_name_input)
         val amount = dialog.findViewById<TextInputEditText>(R.id.subscription_amount_input)
-        val cycle = dialog.findViewById<AutoCompleteTextView>(R.id.subscription_cycle_input)
         val intervalLayout = dialog.findViewById<TextInputLayout>(R.id.subscription_interval_layout)
         val interval = dialog.findViewById<TextInputEditText>(R.id.subscription_interval_input)
         val due = dialog.findViewById<TextInputEditText>(R.id.subscription_due_input)
         val category = dialog.findViewById<AutoCompleteTextView>(R.id.subscription_category_input)
-        val importance = dialog.findViewById<AutoCompleteTextView>(R.id.subscription_importance_input)
         val notes = dialog.findViewById<TextInputEditText>(R.id.subscription_notes_input)
         val reserve = dialog.findViewById<SwitchMaterial>(R.id.subscription_reserve_switch)
         val reminder = dialog.findViewById<SwitchMaterial>(R.id.subscription_reminder_switch)
         val active = dialog.findViewById<SwitchMaterial>(R.id.subscription_active_switch)
-        val cycleLabels = listOf("Weekly", "Monthly", "Yearly", "Every X days", "Custom")
-        val cycleValues = listOf(SubscriptionRepository.CYCLE_WEEKLY, SubscriptionRepository.CYCLE_MONTHLY, SubscriptionRepository.CYCLE_YEARLY, SubscriptionRepository.CYCLE_EVERY_X_DAYS, SubscriptionRepository.CYCLE_CUSTOM)
-        val importanceLabels = listOf("Low", "Medium", "High", "Essential")
-        val importanceValues = listOf(SubscriptionRepository.IMPORTANCE_LOW, SubscriptionRepository.IMPORTANCE_MEDIUM, SubscriptionRepository.IMPORTANCE_HIGH, SubscriptionRepository.IMPORTANCE_ESSENTIAL)
+        dialog.findViewById<TextView>(R.id.subscription_sheet_title).text = if (existing == null) "Add Subscription" else "Edit Subscription"
+        val cycleChips = listOf(
+            dialog.findViewById<MaterialButton>(R.id.subscription_cycle_monthly_chip) to SubscriptionRepository.CYCLE_MONTHLY,
+            dialog.findViewById<MaterialButton>(R.id.subscription_cycle_yearly_chip) to SubscriptionRepository.CYCLE_YEARLY,
+            dialog.findViewById<MaterialButton>(R.id.subscription_cycle_weekly_chip) to SubscriptionRepository.CYCLE_WEEKLY,
+            dialog.findViewById<MaterialButton>(R.id.subscription_cycle_every_x_days_chip) to SubscriptionRepository.CYCLE_EVERY_X_DAYS,
+            dialog.findViewById<MaterialButton>(R.id.subscription_cycle_custom_chip) to SubscriptionRepository.CYCLE_CUSTOM
+        )
+        val priorityChips = listOf(
+            dialog.findViewById<MaterialButton>(R.id.subscription_priority_high_chip) to SubscriptionRepository.IMPORTANCE_HIGH,
+            dialog.findViewById<MaterialButton>(R.id.subscription_priority_medium_chip) to SubscriptionRepository.IMPORTANCE_MEDIUM,
+            dialog.findViewById<MaterialButton>(R.id.subscription_priority_low_chip) to SubscriptionRepository.IMPORTANCE_LOW,
+            dialog.findViewById<MaterialButton>(R.id.subscription_priority_essential_chip) to SubscriptionRepository.IMPORTANCE_ESSENTIAL
+        )
         val categories = latestState.categories
         var selectedCycle = existing?.subscription?.billingCycle ?: SubscriptionRepository.CYCLE_MONTHLY
         var selectedImportance = existing?.subscription?.importance ?: SubscriptionRepository.IMPORTANCE_MEDIUM
         var selectedCategory = categories.firstOrNull { it.id == existing?.subscription?.categoryId }
         var selectedDue = existing?.subscription?.nextBillingDate
-        cycle.setAdapter(ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, cycleLabels))
-        importance.setAdapter(ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, importanceLabels))
         category.setAdapter(ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, categories.map { it.name }))
-        configureDropdown(cycle); configureDropdown(importance); configureDropdown(category)
+        configureDropdown(category)
         name.setText(existing?.subscription?.name)
         amount.setText(existing?.subscription?.amount?.toBigDecimal()?.movePointLeft(2)?.stripTrailingZeros()?.toPlainString())
         interval.setText(existing?.subscription?.customIntervalDays?.toString())
         selectedDue?.let { due.setText(Formatters.date(it)) }
         notes.setText(existing?.subscription?.notes)
-        cycle.setText(cycleLabels[cycleValues.indexOf(selectedCycle).coerceAtLeast(0)], false)
-        importance.setText(importanceLabels[importanceValues.indexOf(selectedImportance).coerceAtLeast(0)], false)
         category.setText(selectedCategory?.name.orEmpty(), false)
         reserve.isChecked = existing?.subscription?.reserveEnabled ?: false
         reminder.isChecked = existing?.subscription?.reminderEnabled ?: false
         active.isChecked = existing?.subscription?.isActive ?: true
         fun updateVisibility() {
             intervalLayout.visibility = if (selectedCycle in setOf(SubscriptionRepository.CYCLE_EVERY_X_DAYS, SubscriptionRepository.CYCLE_CUSTOM)) View.VISIBLE else View.GONE
+            cycleChips.forEach { (chip, value) -> styleChoiceChip(chip, value == selectedCycle) }
+            priorityChips.forEach { (chip, value) -> stylePriorityChip(chip, value == selectedImportance, value) }
         }
         updateVisibility()
-        cycle.setOnItemClickListener { _, _, pos, _ -> selectedCycle = cycleValues[pos]; updateVisibility() }
-        importance.setOnItemClickListener { _, _, pos, _ -> selectedImportance = importanceValues[pos] }
+        cycleChips.forEach { (chip, value) ->
+            chip.setOnClickListener {
+                selectedCycle = value
+                updateVisibility()
+            }
+        }
+        priorityChips.forEach { (chip, value) ->
+            chip.setOnClickListener {
+                selectedImportance = value
+                updateVisibility()
+            }
+        }
         category.setOnItemClickListener { _, _, pos, _ -> selectedCategory = categories.getOrNull(pos) }
         due.setOnClickListener {
             val cal = java.util.Calendar.getInstance()
@@ -538,11 +684,9 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
                 due.setText(Formatters.date(selectedDue!!))
             }, cal.get(java.util.Calendar.YEAR), cal.get(java.util.Calendar.MONTH), cal.get(java.util.Calendar.DAY_OF_MONTH)).show()
         }
-        val alert = MaterialAlertDialogBuilder(requireContext())
-            .setTitle(if (existing == null) "Add Subscription" else "Edit Subscription")
-            .setView(dialog)
-            .setNegativeButton("Cancel", null)
-            .setPositiveButton("Save") { _, _ ->
+        val sheet = showPlanSheet(dialog, R.id.subscription_dialog_scroll)
+        dialog.findViewById<MaterialButton>(R.id.subscription_cancel_button).setOnClickListener { sheet.dismiss() }
+        dialog.findViewById<MaterialButton>(R.id.subscription_save_button).setOnClickListener {
                 subscriptionViewModel.save(
                     existing?.subscription?.id,
                     name.text.toString(),
@@ -558,27 +702,41 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
                     active.isChecked,
                     subscriptionResultHandler()
                 )
-            }.create()
-        alert.setOnShowListener {
-            dialog.findViewById<androidx.core.widget.NestedScrollView>(R.id.subscription_dialog_scroll)?.let { scroll ->
-                scroll.layoutParams = scroll.layoutParams.apply { height = (resources.displayMetrics.heightPixels * 0.62f).toInt() }
-            }
+            sheet.dismiss()
         }
-        alert.show()
     }
 
     private fun renderPiggyBanks(view: View, items: List<com.example.kitatrack.data.local.model.PiggyBankProgress>) {
         val container = view.findViewById<LinearLayout>(R.id.piggy_list)
         val empty = view.findViewById<TextView>(R.id.piggy_empty_state)
+        view.findViewById<TextView>(R.id.piggy_count_badge).text = items.size.toString()
         container.removeAllViews()
         empty.visibility = if (items.isEmpty()) View.VISIBLE else View.GONE
         items.forEach { item ->
             if (refreshedPiggyIds.add(item.id)) piggyViewModel.refreshMissed(item.id)
             val card = layoutInflater.inflate(R.layout.item_piggy_bank_card, container, false)
             card.findViewById<TextView>(R.id.piggy_name).text = item.name
-            card.findViewById<TextView>(R.id.piggy_amounts).text = "${Formatters.peso(item.currentAmount)} / ${Formatters.peso(item.targetAmount)}\n${Formatters.peso(item.remainingAmount)} remaining"
-            card.findViewById<ProgressBar>(R.id.piggy_progress).progress = item.progressPercent.coerceAtMost(100)
-            card.findViewById<TextView>(R.id.piggy_meta).text = "${item.progressPercent}% saved | ${item.selectedAllocationPercent}% allocation | ${item.statusLabel}"
+            card.findViewById<TextView>(R.id.piggy_status).apply {
+                visibility = View.VISIBLE
+                text = item.statusLabel
+                tintChip(this, if (item.isOnTrack == false || item.unresolvedMissedCount > 0) R.color.kitatrack_chip_yellow_background else R.color.kitatrack_chip_green_background, if (item.isOnTrack == false || item.unresolvedMissedCount > 0) R.color.kitatrack_secondary_text else R.color.kitatrack_primary_green)
+            }
+            card.findViewById<TextView>(R.id.piggy_amounts).text = "${Formatters.peso(item.currentAmount)} saved of ${Formatters.peso(item.targetAmount)}"
+            card.findViewById<TextView>(R.id.piggy_saved_value).text = Formatters.peso(item.currentAmount)
+            card.findViewById<TextView>(R.id.piggy_saved_context).text = "saved of ${Formatters.peso(item.targetAmount)}"
+            card.findViewById<TextView>(R.id.piggy_meta).text = "${Formatters.peso(item.remainingAmount)} remaining"
+            card.findViewById<ProgressBar>(R.id.piggy_progress).apply {
+                progress = item.progressPercent.coerceAtMost(100)
+                progressTintList = ColorStateList.valueOf(ContextCompat.getColor(requireContext(), if (item.isOnTrack == false) R.color.kitatrack_warning_yellow else R.color.kitatrack_primary_green))
+            }
+            card.findViewById<TextView>(R.id.piggy_saved_chip).apply {
+                visibility = View.VISIBLE
+                text = "${item.progressPercent.coerceAtMost(100)}% saved"
+            }
+            card.findViewById<TextView>(R.id.piggy_allocation_chip).apply {
+                visibility = View.VISIBLE
+                text = "${item.selectedAllocationPercent}% allocation"
+            }
             card.findViewById<TextView>(R.id.piggy_warning).apply {
                 visibility = if (item.unresolvedMissedCount > 0) View.VISIBLE else View.GONE
                 text = if (item.unresolvedMissedCount > 0) {
@@ -606,6 +764,7 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
         val selectedPercentText = dialog.findViewById<TextView>(R.id.piggy_selected_percent_text)
         val over = dialog.findViewById<SwitchMaterial>(R.id.piggy_over_save_switch)
         val active = dialog.findViewById<SwitchMaterial>(R.id.piggy_active_switch)
+        dialog.findViewById<TextView>(R.id.piggy_sheet_title).text = if (existing == null) "Add Piggy Bank" else "Edit Piggy Bank"
         name.setText(existing?.name)
         target.setText(existing?.targetAmount?.toBigDecimal()?.movePointLeft(2)?.stripTrailingZeros()?.toPlainString())
         weeklyIncome.setText(existing?.weeklyIncomePrediction?.toBigDecimal()?.movePointLeft(2)?.stripTrailingZeros()?.toPlainString())
@@ -662,22 +821,16 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
             })
         }
         refreshPlan()
-        val alertDialog = MaterialAlertDialogBuilder(requireContext()).setTitle(if (existing == null) "Add Piggy Bank" else "Edit Piggy Bank")
-            .setView(dialog).setNegativeButton("Cancel", null)
-            .setPositiveButton("Save") { _, _ ->
+        val sheet = showPlanSheet(dialog, R.id.piggy_dialog_scroll)
+        dialog.findViewById<MaterialButton>(R.id.piggy_cancel_button).setOnClickListener { sheet.dismiss() }
+        dialog.findViewById<MaterialButton>(R.id.piggy_save_button).setOnClickListener {
                 val targetValue = target.text.toString().toBigDecimalOrNull()?.movePointRight(2)?.toLong() ?: 0L
                 val weeklyValue = weeklyIncome.text.toString().toBigDecimalOrNull()?.movePointRight(2)?.toLong() ?: 0L
                 piggyViewModel.save(existing?.id, name.text.toString(), targetValue, existing?.currentAmount ?: 0L, weeklyValue, selectedPercent, selectedTargetDate, notes.text.toString(), over.isChecked, active.isChecked) {
                     it.onFailure { e -> Snackbar.make(requireView(), e.message ?: "Piggy bank could not be saved.", Snackbar.LENGTH_LONG).show() }
                 }
-            }.create()
-        alertDialog.setOnShowListener {
-            dialog.findViewById<androidx.core.widget.NestedScrollView>(R.id.piggy_dialog_scroll)?.let { scroll ->
-                val maxHeight = (resources.displayMetrics.heightPixels * 0.62f).toInt()
-                scroll.layoutParams = scroll.layoutParams.apply { height = maxHeight }
-            }
+            sheet.dismiss()
         }
-        alertDialog.show()
     }
 
     private fun showPiggyDetails(item: com.example.kitatrack.data.local.model.PiggyBankProgress) {
@@ -841,6 +994,7 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
     private fun renderBudgets(view: View, budgets: List<BudgetProgress>) {
         val container = view.findViewById<LinearLayout>(R.id.budget_list)
         val empty = view.findViewById<TextView>(R.id.budget_empty_state)
+        view.findViewById<TextView>(R.id.budget_count_badge).text = budgets.size.toString()
         container.removeAllViews()
         empty.visibility = if (budgets.isEmpty()) View.VISIBLE else View.GONE
         budgets.forEach { budget ->
@@ -850,20 +1004,27 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
                 "${budget.periodLabel} · ${budget.categoryName ?: "Overall"}${if (!budget.isActive) " · Inactive" else ""}"
             card.findViewById<TextView>(R.id.budget_amounts).text =
                 if (budget.remainingAmount >= 0) {
-                    "${Formatters.peso(budget.remainingAmount)} left\n" +
-                        "${Formatters.peso(budget.usedAmount)} used of ${Formatters.peso(budget.adjustedLimitAmount)} usable"
+                    ""
                 } else {
-                    "${Formatters.peso(-budget.remainingAmount)} over\n" +
-                        "${Formatters.peso(budget.usedAmount)} used of ${Formatters.peso(budget.adjustedLimitAmount)} usable"
+                    ""
                 }
             card.findViewById<TextView>(R.id.budget_status).text = when {
                 !budget.isActive -> "Inactive"
-                budget.adjustedLimitAmount <= 0L && budget.reserveImpactAmount > 0L -> "No usable budget"
+                budget.adjustedLimitAmount <= 0L && budget.reserveImpactAmount > 0L -> budget.periodLabel
                 budget.isOverLimit -> "Over budget"
                 budget.isNearLimit -> "Near limit"
-                budget.reserveImpactAmount > 0L -> "${Formatters.peso(budget.reserveImpactAmount)} reserved this period"
+                budget.reserveImpactAmount > 0L -> budget.periodLabel
                 else -> "On track"
             }
+            card.findViewById<TextView>(R.id.budget_meta).text = budget.categoryName ?: "Overall"
+            card.findViewById<TextView>(R.id.budget_left).apply {
+                text = if (budget.remainingAmount >= 0) "${Formatters.peso(budget.remainingAmount)} left" else "${Formatters.peso(-budget.remainingAmount)} over"
+                setTextColor(ContextCompat.getColor(requireContext(), if (budget.remainingAmount >= 0) R.color.kitatrack_primary_text else R.color.kitatrack_expense_red))
+            }
+            card.findViewById<TextView>(R.id.budget_used).text =
+                "${Formatters.peso(budget.usedAmount)} of ${Formatters.peso(budget.adjustedLimitAmount)}"
+            card.findViewById<TextView>(R.id.budget_reserved_value).text = Formatters.peso(budget.reserveImpactAmount)
+            card.findViewById<TextView>(R.id.budget_status).text = budget.periodLabel
             card.findViewById<ProgressBar>(R.id.budget_progress).apply {
                 progress = budget.usagePercent.coerceAtMost(100)
                 progressTintList = ColorStateList.valueOf(ContextCompat.getColor(requireContext(), when {
@@ -888,43 +1049,44 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
         val dialogView = layoutInflater.inflate(R.layout.dialog_budget, null, false)
         val name = dialogView.findViewById<TextInputEditText>(R.id.budget_name_input)
         val amount = dialogView.findViewById<TextInputEditText>(R.id.budget_amount_input)
-        val type = dialogView.findViewById<AutoCompleteTextView>(R.id.budget_type_input)
         val category = dialogView.findViewById<AutoCompleteTextView>(R.id.budget_category_input)
-        val categoryLayout = dialogView.findViewById<TextInputLayout>(R.id.budget_category_layout)
-        val categoryHelp = dialogView.findViewById<TextView>(R.id.budget_category_help)
         val active = dialogView.findViewById<SwitchMaterial>(R.id.budget_active_switch)
-        val types = listOf(
-            "Weekly spending limit",
-            "Monthly spending limit",
-            "Weekly category budget",
-            "Monthly category budget"
-        )
-        val values = listOf(BudgetRepository.TYPE_WEEKLY_OVERALL, BudgetRepository.TYPE_MONTHLY_OVERALL, BudgetRepository.TYPE_CATEGORY_WEEKLY, BudgetRepository.TYPE_CATEGORY_MONTHLY)
+        dialogView.findViewById<TextView>(R.id.budget_sheet_title).text = if (existing == null) "Add Budget" else "Edit Budget"
+        val weeklyChip = dialogView.findViewById<MaterialButton>(R.id.budget_weekly_chip)
+        val monthlyChip = dialogView.findViewById<MaterialButton>(R.id.budget_monthly_chip)
         val budgetCategories = latestState.categories
-        type.setAdapter(ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, types))
-        category.setAdapter(ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, budgetCategories.map { it.name }))
-        configureDropdown(type)
+        val categoryLabels = listOf("Overall") + budgetCategories.map { it.name }
+        category.setAdapter(ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, categoryLabels))
         configureDropdown(category)
-        var selectedType = existing?.budgetType ?: values[0]
+        var selectedPeriod = when (existing?.budgetType) {
+            BudgetRepository.TYPE_MONTHLY_OVERALL, BudgetRepository.TYPE_CATEGORY_MONTHLY -> BudgetRepository.TYPE_MONTHLY_OVERALL
+            else -> BudgetRepository.TYPE_WEEKLY_OVERALL
+        }
         var selectedCategory = budgetCategories.firstOrNull { it.name == existing?.categoryName }
         name.setText(existing?.name)
         amount.setText(existing?.limitAmount?.toBigDecimal()?.movePointLeft(2)?.stripTrailingZeros()?.toPlainString())
-        type.setText(types[values.indexOf(selectedType).coerceAtLeast(0)], false)
-        category.setText(selectedCategory?.name.orEmpty(), false)
+        category.setText(selectedCategory?.name ?: "Overall", false)
         active.isChecked = existing?.isActive ?: true
-        fun updateCategoryVisibility() {
-            val categoryBudget = selectedType in BudgetRepository.CATEGORY_TYPES
-            categoryLayout.visibility = if (categoryBudget) View.VISIBLE else View.GONE
-            categoryHelp.visibility = if (categoryBudget) View.VISIBLE else View.GONE
-            if (!categoryBudget) {
-                selectedCategory = null
-                category.setText("", false)
+        fun selectedBudgetType(): String {
+            return when {
+                selectedPeriod == BudgetRepository.TYPE_MONTHLY_OVERALL && selectedCategory != null -> BudgetRepository.TYPE_CATEGORY_MONTHLY
+                selectedPeriod == BudgetRepository.TYPE_MONTHLY_OVERALL -> BudgetRepository.TYPE_MONTHLY_OVERALL
+                selectedCategory != null -> BudgetRepository.TYPE_CATEGORY_WEEKLY
+                else -> BudgetRepository.TYPE_WEEKLY_OVERALL
             }
         }
-        updateCategoryVisibility()
-        type.setOnItemClickListener { _, _, pos, _ ->
-            selectedType = values[pos]
-            updateCategoryVisibility()
+        fun updatePeriodChips() {
+            styleChoiceChip(weeklyChip, selectedPeriod == BudgetRepository.TYPE_WEEKLY_OVERALL)
+            styleChoiceChip(monthlyChip, selectedPeriod == BudgetRepository.TYPE_MONTHLY_OVERALL)
+        }
+        updatePeriodChips()
+        weeklyChip.setOnClickListener {
+            selectedPeriod = BudgetRepository.TYPE_WEEKLY_OVERALL
+            updatePeriodChips()
+        }
+        monthlyChip.setOnClickListener {
+            selectedPeriod = BudgetRepository.TYPE_MONTHLY_OVERALL
+            updatePeriodChips()
         }
         category.setOnClickListener {
             if (budgetCategories.isEmpty()) {
@@ -933,16 +1095,17 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
                 category.post { category.showDropDown() }
             }
         }
-        category.setOnItemClickListener { _, _, pos, _ -> selectedCategory = budgetCategories.getOrNull(pos) }
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle(if (existing == null) "Add budget" else "Edit budget")
-            .setView(dialogView)
-            .setNegativeButton("Cancel", null)
-            .setPositiveButton("Save") { _, _ ->
-                viewModel.save(existing?.budgetId, name.text.toString(), selectedType, amount.text.toString(), selectedCategory?.id, active.isChecked) {
-                    it.onFailure { e -> Snackbar.make(requireView(), e.message ?: "Budget could not be saved.", Snackbar.LENGTH_LONG).show() }
-                }
-            }.show()
+        category.setOnItemClickListener { _, _, pos, _ ->
+            selectedCategory = if (pos == 0) null else budgetCategories.getOrNull(pos - 1)
+        }
+        val sheet = showPlanSheet(dialogView, null)
+        dialogView.findViewById<MaterialButton>(R.id.budget_cancel_button).setOnClickListener { sheet.dismiss() }
+        dialogView.findViewById<MaterialButton>(R.id.budget_save_button).setOnClickListener {
+            viewModel.save(existing?.budgetId, name.text.toString(), selectedBudgetType(), amount.text.toString(), selectedCategory?.id, active.isChecked) {
+                it.onFailure { e -> Snackbar.make(requireView(), e.message ?: "Budget could not be saved.", Snackbar.LENGTH_LONG).show() }
+            }
+            sheet.dismiss()
+        }
     }
 }
 

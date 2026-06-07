@@ -10,6 +10,7 @@ import android.provider.OpenableColumns
 import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
+import android.widget.ImageView
 import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
@@ -66,10 +67,10 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         bindThemeToggle(view)
-        bindActionRow(view.findViewById(R.id.export_csv_button), "CSV", "Export to CSV", "Open in Excel or Google Sheets.", R.color.kitatrack_chip_green_background, R.color.kitatrack_primary_green)
-        bindActionRow(view.findViewById(R.id.export_json_button), "↓", "Export JSON Backup", "Full backup - restores all app data.", R.color.kitatrack_soft_mint, R.color.kitatrack_primary_green)
-        bindActionRow(view.findViewById(R.id.import_json_button), "↑", "Import JSON Backup", "Merge with or replace current data.", R.color.kitatrack_chip_yellow_background, R.color.kitatrack_warning_yellow)
-        bindActionRow(view.findViewById(R.id.reset_data_button), "DEL", "Reset Local Data", "Removes everything. Cannot be undone.", R.color.kitatrack_chip_red_background, R.color.kitatrack_expense_red)
+        bindActionRow(view.findViewById(R.id.export_csv_button), R.drawable.ic_settings_csv, "Export to CSV", "Open in Excel or Google Sheets.", R.color.kitatrack_chip_green_background, R.color.kitatrack_primary_green)
+        bindActionRow(view.findViewById(R.id.export_json_button), R.drawable.ic_settings_export, "Export JSON Backup", "Full backup - restores all app data.", R.color.kitatrack_chip_blue_background, R.color.kitatrack_json_export_blue)
+        bindActionRow(view.findViewById(R.id.import_json_button), R.drawable.ic_settings_import, "Import JSON Backup", "Merge with or replace current data.", R.color.kitatrack_chip_yellow_background, R.color.kitatrack_warning_yellow)
+        bindActionRow(view.findViewById(R.id.reset_data_button), R.drawable.ic_settings_delete, "Reset Local Data", "Removes everything. Cannot be undone.", R.color.kitatrack_chip_red_background, R.color.kitatrack_expense_red)
 
         view.findViewById<View>(R.id.export_csv_button).setOnClickListener {
             viewModel.createCsv { result ->
@@ -150,10 +151,10 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         button.contentDescription = if (isDark) "Switch to day mode" else "Switch to dark mode"
     }
 
-    private fun bindActionRow(row: View, icon: String, title: String, description: String, iconBackground: Int, accent: Int) {
-        row.findViewById<TextView>(R.id.settings_action_icon).apply {
-            text = icon
-            setTextColor(ContextCompat.getColor(requireContext(), accent))
+    private fun bindActionRow(row: View, iconRes: Int, title: String, description: String, iconBackground: Int, accent: Int) {
+        row.findViewById<ImageView>(R.id.settings_action_icon).apply {
+            setImageResource(iconRes)
+            imageTintList = ColorStateList.valueOf(ContextCompat.getColor(requireContext(), accent))
             backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(requireContext(), iconBackground))
         }
         row.findViewById<TextView>(R.id.settings_action_title).apply {

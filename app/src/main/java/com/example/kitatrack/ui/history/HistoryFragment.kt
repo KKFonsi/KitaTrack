@@ -2,6 +2,8 @@ package com.example.kitatrack.ui.history
 
 import android.os.Bundle
 import android.content.res.ColorStateList
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.view.View
 import android.widget.TextView
 import androidx.core.content.ContextCompat
@@ -55,7 +57,7 @@ class HistoryFragment : Fragment(R.layout.fragment_history) {
                     else -> true
                 }
             }
-            renderSummary(view, filtered)
+            renderSummary(view, filtered, filterGroup.checkedChipId)
             view.findViewById<TextView>(R.id.history_empty_state).visibility =
                 if (filtered.isEmpty()) View.VISIBLE else View.GONE
             adapter.submitRows(viewModel.withRunningBalances(filtered))
@@ -87,10 +89,16 @@ class HistoryFragment : Fragment(R.layout.fragment_history) {
         button.contentDescription = if (isDark) "Switch to day mode" else "Switch to dark mode"
     }
 
-    private fun renderSummary(view: View, items: List<TransactionWithCategory>) {
+    private fun renderSummary(view: View, items: List<TransactionWithCategory>, checkedFilterId: Int) {
         val income = items.filter { it.transaction.type == "INCOME" }.sumOf { it.transaction.amount }
         val expense = items.filter { it.transaction.type == "EXPENSE" }.sumOf { it.transaction.amount }
         val net = income - expense
+        view.findViewById<View>(R.id.history_income_summary).visibility =
+            if (checkedFilterId == R.id.filter_expense) View.GONE else View.VISIBLE
+        view.findViewById<View>(R.id.history_expense_summary).visibility =
+            if (checkedFilterId == R.id.filter_income) View.GONE else View.VISIBLE
+        view.findViewById<View>(R.id.history_net_summary).visibility =
+            if (checkedFilterId == R.id.filter_income || checkedFilterId == R.id.filter_expense) View.GONE else View.VISIBLE
         view.findViewById<TextView>(R.id.history_income_value).text = "+${Formatters.peso(income)}"
         view.findViewById<TextView>(R.id.history_expense_value).text = "-${Formatters.peso(expense)}"
         view.findViewById<TextView>(R.id.history_net_value).apply {
@@ -138,7 +146,7 @@ class HistoryFragment : Fragment(R.layout.fragment_history) {
         dialog.setContentView(sheet)
         dialog.setOnShowListener {
             dialog.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet)
-                ?.setBackgroundResource(R.drawable.kt_bottom_sheet_background)
+                ?.background = ColorDrawable(Color.TRANSPARENT)
         }
         dialog.show()
     }

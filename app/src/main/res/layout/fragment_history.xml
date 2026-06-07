@@ -144,7 +144,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="10dp"
-        app:cardBackgroundColor="@color/kitatrack_card_background"
+        app:cardBackgroundColor="@color/kitatrack_history_summary_background"
         app:cardCornerRadius="16dp"
         app:cardElevation="0dp"
         app:strokeColor="@color/kitatrack_subtle_border"
@@ -157,6 +157,7 @@
             android:padding="14dp">
 
             <LinearLayout
+                android:id="@+id/history_income_summary"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
@@ -176,6 +177,7 @@
             </LinearLayout>
 
             <LinearLayout
+                android:id="@+id/history_expense_summary"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
@@ -195,6 +197,7 @@
             </LinearLayout>
 
             <LinearLayout
+                android:id="@+id/history_net_summary"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
