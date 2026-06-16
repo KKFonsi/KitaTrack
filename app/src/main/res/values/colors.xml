@@ -23,7 +23,8 @@
     <color name="kitatrack_soft_danger_background">#FCEAEA</color>
     <color name="kitatrack_soft_subscription_background">#F0F7F3</color>
     <color name="kitatrack_soft_planner_background">#F0F4F2</color>
-    <color name="kitatrack_plan_card_background">#FAFCFB</color>
+    <color name="kitatrack_plan_card_background">#F3F8F5</color>
+    <color name="kitatrack_plan_card_stroke">#D6E7DE</color>
     <color name="kitatrack_plan_empty_background">#F8FAF9</color>
     <color name="kitatrack_segment_selected_background">#FFFFFFFF</color>
     <color name="kitatrack_chip_neutral_background">#EEF2F1</color>

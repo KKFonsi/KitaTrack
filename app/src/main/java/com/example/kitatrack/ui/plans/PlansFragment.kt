@@ -1,9 +1,12 @@
 package com.example.kitatrack.ui.plans
 
 import android.os.Bundle
+import android.graphics.Typeface
+import android.view.Gravity
 import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
+import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
@@ -106,7 +109,7 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
             val card = layoutInflater.inflate(R.layout.item_debt_card, container, false)
             card.findViewById<TextView>(R.id.debt_name).text = debt.name
             card.findViewById<TextView>(R.id.debt_meta).text =
-                "${if (debt.debtType == DebtRepository.TYPE_I_OWE) "Money I owe" else "Owed to me"} · ${debt.personName ?: "No person"}"
+                "${if (debt.debtType == DebtRepository.TYPE_I_OWE) "Money I owe" else "Owed to me"} - ${debt.personName ?: "No person"}"
             card.findViewById<TextView>(R.id.debt_amounts).text = buildString {
                 append("${Formatters.peso(debt.remainingAmount)} remaining\n")
                 append("${Formatters.peso(debt.amountPaid)} paid of ${Formatters.peso(debt.totalAmount)}")
@@ -125,13 +128,13 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
             }
             card.findViewById<TextView>(R.id.debt_status).text = buildString {
                 append(item.statusLabel)
-                append(" · Due ${item.dueLabel}")
-                debt.installmentAmount?.let { append(" · ${Formatters.peso(it)} payment") }
+                append(" - Due ${item.dueLabel}")
+                debt.installmentAmount?.let { append(" - ${Formatters.peso(it)} payment") }
             }
             card.findViewById<TextView>(R.id.debt_amounts).visibility = View.GONE
             card.findViewById<LinearLayout>(R.id.debt_figures_row).visibility = View.VISIBLE
             card.findViewById<TextView>(R.id.debt_meta).text =
-                "${if (debt.debtType == DebtRepository.TYPE_I_OWE) "Money I owe" else "Money owed to me"} · ${debt.personName ?: "No source"}"
+                "${if (debt.debtType == DebtRepository.TYPE_I_OWE) "Money I owe" else "Money owed to me"} - ${debt.personName ?: "No source"}"
             card.findViewById<TextView>(R.id.debt_remaining_value).apply {
                 text = Formatters.peso(debt.remainingAmount)
                 setTextColor(ContextCompat.getColor(requireContext(), if (debt.debtType == DebtRepository.TYPE_I_OWE) R.color.kitatrack_expense_red else R.color.kitatrack_primary_green))
@@ -160,30 +163,52 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
     private fun showDebtDetails(item: DebtProgress) {
         val d = item.debt
         val isPaid = d.remainingAmount <= 0 || d.status == DebtRepository.STATUS_PAID
-        val message = buildString {
-            append("${if (d.debtType == DebtRepository.TYPE_I_OWE) "Money I owe" else "Money owed to me"}\n")
-            d.personName?.let { append("Person: $it\n") }
-            append("Total: ${Formatters.peso(d.totalAmount)}\n")
-            append("Paid: ${Formatters.peso(d.amountPaid)}\n")
-            append("Remaining: ${Formatters.peso(d.remainingAmount)}\n")
-            if (d.debtType == DebtRepository.TYPE_I_OWE) append("Debt Reserve: ${Formatters.peso(d.reservedAmount)}\n")
-            d.installmentAmount?.let { append("Payment amount: ${Formatters.peso(it)}\n") }
-            append("Frequency: ${d.paymentFrequency.replace("_", " ")}\n")
-            append("Next due: ${item.dueLabel}\n")
-            append("Status: ${item.statusLabel}")
+        val view = layoutInflater.inflate(R.layout.bottom_sheet_plan_detail, null, false)
+        val sheet = showPlanSheet(view, null)
+        view.findViewById<TextView>(R.id.detail_title).text = d.name
+        view.findViewById<TextView>(R.id.detail_subtitle).text = "Debt - ${d.personName ?: "No source"}"
+        view.findViewById<TextView>(R.id.detail_status_badge).apply {
+            text = item.statusLabel
+            tintChip(this, if (item.isOverdue) R.color.kitatrack_chip_red_background else R.color.kitatrack_chip_green_background, if (item.isOverdue) R.color.kitatrack_expense_red else R.color.kitatrack_primary_green)
         }
-        val builder = MaterialAlertDialogBuilder(requireContext())
-            .setTitle(d.name)
-            .setMessage(message)
-            .setNegativeButton("Close", null)
-        if (isPaid) {
-            builder.setPositiveButton("Archive") { _, _ -> debtViewModel.archive(d.id) }
-        } else {
-            builder
-                .setNeutralButton("Pay") { _, _ -> showDebtPaymentDialog(item) }
-                .setPositiveButton("Edit") { _, _ -> showDebtDialog(item) }
+        view.findViewById<TextView>(R.id.detail_direction_badge).apply {
+            visibility = View.VISIBLE
+            text = if (d.debtType == DebtRepository.TYPE_I_OWE) "Money I owe" else "Money others owe me"
+            tintChip(this, if (d.debtType == DebtRepository.TYPE_I_OWE) R.color.kitatrack_chip_red_background else R.color.kitatrack_chip_green_background, if (d.debtType == DebtRepository.TYPE_I_OWE) R.color.kitatrack_expense_red else R.color.kitatrack_primary_green)
         }
-        builder.show()
+        view.findViewById<TextView>(R.id.detail_main_amount).apply {
+            text = Formatters.peso(d.remainingAmount)
+            setTextColor(ContextCompat.getColor(requireContext(), if (d.debtType == DebtRepository.TYPE_I_OWE) R.color.kitatrack_expense_red else R.color.kitatrack_primary_green))
+        }
+        view.findViewById<TextView>(R.id.detail_amount_context).text = "remaining of ${Formatters.peso(d.totalAmount)}"
+        view.findViewById<ProgressBar>(R.id.detail_progress).apply {
+            progress = item.progressPercent.coerceAtMost(100)
+            progressTintList = ColorStateList.valueOf(ContextCompat.getColor(requireContext(), if (item.isOverdue) R.color.kitatrack_expense_red else R.color.kitatrack_primary_green))
+        }
+        view.findViewById<TextView>(R.id.detail_progress_caption).text = "${item.progressPercent.coerceAtMost(100)}% paid off"
+        val stats = view.findViewById<LinearLayout>(R.id.detail_stats_container)
+        addStatRow(stats, "Amount paid", Formatters.peso(d.amountPaid))
+        if (d.debtType == DebtRepository.TYPE_I_OWE) addStatRow(stats, "Debt reserve", Formatters.peso(d.reservedAmount))
+        addStatRow(stats, "Payment amount", Formatters.peso(paymentDueForThisTerm(d)))
+        addStatRow(stats, "Frequency", d.paymentFrequency.replace("_", " ").lowercase().replaceFirstChar { it.uppercase() })
+        addStatRow(stats, "Next due", item.dueLabel)
+        view.findViewById<MaterialButton>(R.id.detail_primary_button).apply {
+            visibility = if (isPaid) View.GONE else View.VISIBLE
+            text = "Pay ${Formatters.peso(paymentDueForThisTerm(d))}"
+            setOnClickListener {
+                sheet.dismiss()
+                showDebtPaymentDialog(item)
+            }
+        }
+        view.findViewById<MaterialButton>(R.id.detail_secondary_button).visibility = View.GONE
+        view.findViewById<MaterialButton>(R.id.detail_edit_button).apply {
+            text = if (isPaid) "Archive" else "Edit"
+            setOnClickListener {
+                sheet.dismiss()
+                if (isPaid) debtViewModel.archive(d.id) else showDebtDialog(item)
+            }
+        }
+        view.findViewById<MaterialButton>(R.id.detail_close_button).setOnClickListener { sheet.dismiss() }
     }
 
     private fun showDebtActions(item: DebtProgress) {
@@ -467,6 +492,110 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
         chip.setTextColor(ContextCompat.getColor(requireContext(), textColor))
     }
 
+    private fun addStatRow(
+        container: LinearLayout,
+        label: String,
+        value: String,
+        valueColor: Int = R.color.kitatrack_primary_text,
+        valueBackground: Int? = null
+    ) {
+        val row = LinearLayout(requireContext()).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, dp(13), 0, dp(13))
+        }
+        row.addView(TextView(requireContext()).apply {
+            text = label.uppercase()
+            textSize = 11f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(ContextCompat.getColor(requireContext(), R.color.kitatrack_secondary_text))
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        })
+        row.addView(TextView(requireContext()).apply {
+            text = value
+            textSize = 13f
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.END
+            setTextColor(ContextCompat.getColor(requireContext(), valueColor))
+            valueBackground?.let {
+                background = ContextCompat.getDrawable(requireContext(), R.drawable.kt_chip_green)
+                backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(requireContext(), it))
+                setPadding(dp(10), dp(5), dp(10), dp(5))
+            }
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+        })
+        if (container.childCount > 0) {
+            container.addView(View(requireContext()).apply {
+                setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.kitatrack_divider))
+                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(1))
+            })
+        }
+        container.addView(row)
+    }
+
+    private fun addActionRow(
+        container: LinearLayout,
+        label: String,
+        iconRes: Int,
+        danger: Boolean = false,
+        onClick: () -> Unit
+    ) {
+        if (container.childCount > 0) {
+            container.addView(View(requireContext()).apply {
+                setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.kitatrack_divider))
+                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(1))
+            })
+        }
+        val row = LinearLayout(requireContext()).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(12), dp(11), dp(8), dp(11))
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { onClick() }
+        }
+        val iconBox = FrameLayout(requireContext()).apply {
+            background = ContextCompat.getDrawable(requireContext(), R.drawable.kt_icon_circle)
+            backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(requireContext(), if (danger) R.color.kitatrack_chip_red_background else R.color.kitatrack_chip_neutral_background))
+            layoutParams = LinearLayout.LayoutParams(dp(34), dp(34))
+        }
+        iconBox.addView(ImageView(requireContext()).apply {
+            setImageResource(iconRes)
+            imageTintList = ColorStateList.valueOf(ContextCompat.getColor(requireContext(), if (danger) R.color.kitatrack_expense_red else R.color.kitatrack_secondary_text))
+            layoutParams = FrameLayout.LayoutParams(dp(18), dp(18), Gravity.CENTER)
+        })
+        row.addView(iconBox)
+        row.addView(TextView(requireContext()).apply {
+            text = label
+            textSize = 14f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(ContextCompat.getColor(requireContext(), if (danger) R.color.kitatrack_expense_red else R.color.kitatrack_primary_text))
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                marginStart = dp(12)
+            }
+        })
+        row.addView(ImageView(requireContext()).apply {
+            setImageResource(R.drawable.ic_chevron_right_24)
+            imageTintList = ColorStateList.valueOf(ContextCompat.getColor(requireContext(), if (danger) R.color.kitatrack_expense_red else R.color.kitatrack_muted_text))
+            layoutParams = LinearLayout.LayoutParams(dp(22), dp(22))
+        })
+        container.addView(row)
+    }
+
+    private fun priorityBackgroundColor(value: String): Int = when (value.uppercase()) {
+        SubscriptionRepository.IMPORTANCE_HIGH, SubscriptionRepository.IMPORTANCE_ESSENTIAL -> R.color.kitatrack_chip_red_background
+        SubscriptionRepository.IMPORTANCE_MEDIUM -> R.color.kitatrack_chip_yellow_background
+        else -> R.color.kitatrack_chip_neutral_background
+    }
+
+    private fun priorityTextColor(value: String): Int = when (value.uppercase()) {
+        SubscriptionRepository.IMPORTANCE_HIGH, SubscriptionRepository.IMPORTANCE_ESSENTIAL -> R.color.kitatrack_expense_red
+        SubscriptionRepository.IMPORTANCE_MEDIUM -> R.color.kitatrack_warning_yellow
+        else -> R.color.kitatrack_secondary_text
+    }
+
+    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+
     private fun showPlanSheet(content: View, scrollId: Int?, maxHeightRatio: Float = 0.58f): BottomSheetDialog {
         val sheet = BottomSheetDialog(requireContext())
         sheet.setContentView(content)
@@ -535,7 +664,7 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
             card.findViewById<TextView>(R.id.subscription_name).text = sub.name
             card.findViewById<TextView>(R.id.subscription_amount).text = Formatters.peso(sub.amount)
             card.findViewById<TextView>(R.id.subscription_meta).text =
-                "${item.cycleLabel} · Next ${item.dueLabel}"
+                "${item.cycleLabel} - Next ${item.dueLabel}"
             card.findViewById<TextView>(R.id.subscription_priority).apply {
                 visibility = View.VISIBLE
                 text = "${sub.importance.lowercase().replaceFirstChar { it.uppercase() }} priority"
@@ -568,50 +697,78 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
 
     private fun showSubscriptionDetails(item: SubscriptionProgress) {
         val sub = item.subscription
-        val message = buildString {
-            append("${Formatters.peso(sub.amount)} | ${item.cycleLabel}\n")
-            append("Next billing: ${item.dueLabel}\n")
-            append("Reserve: ${if (sub.reserveEnabled) "On (${Formatters.peso(sub.reservedAmount)} saved)" else "Off"}\n")
-            append("Reminder: ${if (sub.reminderEnabled) "On" else "Off"}\n")
-            append("Importance: ${sub.importance}\n")
-            append("Status: ${item.statusLabel}")
-            sub.notes?.let { append("\n\n$it") }
+        val view = layoutInflater.inflate(R.layout.bottom_sheet_plan_detail, null, false)
+        val sheet = showPlanSheet(view, null)
+        view.findViewById<TextView>(R.id.detail_title).text = sub.name
+        view.findViewById<TextView>(R.id.detail_subtitle).text = "Subscription - ${item.cycleLabel}"
+        view.findViewById<TextView>(R.id.detail_status_badge).apply {
+            text = when {
+                item.isFunded -> "Funded"
+                else -> item.statusLabel
+            }
+            tintChip(this, if (item.isFunded) R.color.kitatrack_chip_green_background else R.color.kitatrack_chip_neutral_background, if (item.isFunded) R.color.kitatrack_primary_green else R.color.kitatrack_secondary_text)
         }
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle(sub.name)
-            .setMessage(message)
-            .setNegativeButton("Close", null)
-            .setNeutralButton("Actions") { _, _ -> showSubscriptionActions(item) }
-            .setPositiveButton("Edit") { _, _ -> showSubscriptionDialog(item) }
-            .show()
+        view.findViewById<TextView>(R.id.detail_main_amount).text = Formatters.peso(sub.amount)
+        view.findViewById<TextView>(R.id.detail_amount_context).text = "/ ${item.cycleLabel.lowercase()}"
+        view.findViewById<ProgressBar>(R.id.detail_progress).visibility = View.GONE
+        view.findViewById<TextView>(R.id.detail_progress_caption).visibility = View.GONE
+        val stats = view.findViewById<LinearLayout>(R.id.detail_stats_container)
+        addStatRow(stats, "Next billing", item.dueLabel)
+        addStatRow(stats, "Reserve", if (sub.reserveEnabled) "On - ${Formatters.peso(sub.reservedAmount)} saved" else "Off", if (sub.reserveEnabled) R.color.kitatrack_primary_green else R.color.kitatrack_secondary_text)
+        addStatRow(stats, "Reminder", if (sub.reminderEnabled) "On" else "Off")
+        addStatRow(stats, "Priority", "${sub.importance.lowercase().replaceFirstChar { it.uppercase() }} priority", priorityTextColor(sub.importance), priorityBackgroundColor(sub.importance))
+        view.findViewById<MaterialButton>(R.id.detail_primary_button).visibility = View.GONE
+        view.findViewById<MaterialButton>(R.id.detail_secondary_button).apply {
+            visibility = View.VISIBLE
+            text = "Actions"
+            setOnClickListener { showSubscriptionActions(item) }
+        }
+        view.findViewById<MaterialButton>(R.id.detail_edit_button).setOnClickListener {
+            sheet.dismiss()
+            showSubscriptionDialog(item)
+        }
+        view.findViewById<MaterialButton>(R.id.detail_close_button).setOnClickListener { sheet.dismiss() }
     }
 
     private fun showSubscriptionActions(item: SubscriptionProgress) {
         val sub = item.subscription
-        val actions = if (sub.reserveEnabled) {
-            arrayOf("Mark paid from reserve", "Mark paid from Main Balance", "Add reserve", "Remove reserve", "Archive")
-        } else {
-            arrayOf("Mark paid from Main Balance", "Archive")
-        }
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle(sub.name)
-            .setItems(actions) { _, index ->
-                when (actions[index]) {
-                    "Mark paid from reserve" -> showAmountDialog("Payment amount", sub.amount) { amount ->
-                        subscriptionViewModel.payment(sub.id, amount, true, subscriptionResultHandler("Subscription payment recorded."))
-                    }
-                    "Mark paid from Main Balance" -> showAmountDialog("Payment amount", sub.amount) { amount ->
-                        subscriptionViewModel.payment(sub.id, amount, false, subscriptionResultHandler("Subscription payment recorded."))
-                    }
-                    "Add reserve" -> showAmountDialog("Amount to reserve") { amount ->
-                        subscriptionViewModel.reserve(sub.id, amount, true, subscriptionResultHandler("Subscription reserve updated."))
-                    }
-                    "Remove reserve" -> showAmountDialog("Amount to remove from reserve") { amount ->
-                        subscriptionViewModel.reserve(sub.id, amount, false, subscriptionResultHandler("Subscription reserve updated."))
-                    }
-                    "Archive" -> subscriptionViewModel.archive(sub.id)
+        val view = layoutInflater.inflate(R.layout.bottom_sheet_subscription_actions, null, false)
+        val sheet = showPlanSheet(view, null, 0.62f)
+        view.findViewById<TextView>(R.id.subscription_actions_title).text = sub.name
+        val list = view.findViewById<LinearLayout>(R.id.subscription_actions_list)
+        if (sub.reserveEnabled) {
+            addActionRow(list, "Mark paid from reserve", R.drawable.ic_action_paid_reserve) {
+                sheet.dismiss()
+                showAmountDialog("Payment amount", sub.amount) { amount ->
+                    subscriptionViewModel.payment(sub.id, amount, true, subscriptionResultHandler("Subscription payment recorded."))
                 }
-            }.show()
+            }
+        }
+        addActionRow(list, "Mark paid from Main Balance", R.drawable.ic_action_paid_main_balance) {
+            sheet.dismiss()
+            showAmountDialog("Payment amount", sub.amount) { amount ->
+                subscriptionViewModel.payment(sub.id, amount, false, subscriptionResultHandler("Subscription payment recorded."))
+            }
+        }
+        if (sub.reserveEnabled) {
+            addActionRow(list, "Add reserve", R.drawable.ic_action_add_reserve) {
+                sheet.dismiss()
+                showAmountDialog("Amount to reserve") { amount ->
+                    subscriptionViewModel.reserve(sub.id, amount, true, subscriptionResultHandler("Subscription reserve updated."))
+                }
+            }
+            addActionRow(list, "Remove reserve", R.drawable.ic_action_remove_reserve) {
+                sheet.dismiss()
+                showAmountDialog("Amount to remove from reserve") { amount ->
+                    subscriptionViewModel.reserve(sub.id, amount, false, subscriptionResultHandler("Subscription reserve updated."))
+                }
+            }
+        }
+        addActionRow(list, "Archive", R.drawable.ic_action_archive, danger = true) {
+            sheet.dismiss()
+            subscriptionViewModel.archive(sub.id)
+        }
+        view.findViewById<MaterialButton>(R.id.subscription_actions_cancel).setOnClickListener { sheet.dismiss() }
     }
 
     private fun subscriptionResultHandler(successMessage: String = "Subscription saved."): (Result<Unit>) -> Unit = { result ->
@@ -854,25 +1011,52 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
     private fun showPiggyDetails(item: com.example.kitatrack.data.local.model.PiggyBankProgress) {
         piggyViewModel.refreshMissed(item.id)
         val goalReached = isPiggyGoalReached(item)
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle(item.name)
-            .setMessage(buildPiggyDetailMessage(item))
-            .setNegativeButton("Close", null)
-            .setNeutralButton("Record No Money Week") { _, _ -> showMissedAllowanceDialog(item) }
-            .setPositiveButton(
-                when {
-                    goalReached -> "Complete Goal"
-                    item.unresolvedMissedCount > 0 -> "Adjust Plan"
-                    else -> "Edit"
-                }
-            ) { _, _ ->
-                when {
-                    goalReached -> showPiggyCompleteConfirmation(item)
-                    item.unresolvedMissedCount > 0 -> showPiggyAdjustmentDialog(item)
-                    else -> showPiggyDialog(item)
-                }
+        val view = layoutInflater.inflate(R.layout.bottom_sheet_plan_detail, null, false)
+        val sheet = showPlanSheet(view, null)
+        view.findViewById<TextView>(R.id.detail_title).text = item.name
+        view.findViewById<TextView>(R.id.detail_subtitle).text = "Piggy Bank"
+        view.findViewById<TextView>(R.id.detail_status_badge).apply {
+            text = if (goalReached) "Goal reached" else if (item.isOnTrack == false || item.unresolvedMissedCount > 0) "Behind" else "On track"
+            val attention = !goalReached && (item.isOnTrack == false || item.unresolvedMissedCount > 0)
+            tintChip(this, if (attention) R.color.kitatrack_chip_yellow_background else R.color.kitatrack_chip_green_background, if (attention) R.color.kitatrack_secondary_text else R.color.kitatrack_primary_green)
+        }
+        view.findViewById<TextView>(R.id.detail_main_amount).apply {
+            text = Formatters.peso(item.currentAmount)
+            setTextColor(ContextCompat.getColor(requireContext(), R.color.kitatrack_primary_green))
+        }
+        view.findViewById<TextView>(R.id.detail_amount_context).text = "saved of ${Formatters.peso(item.targetAmount)}"
+        view.findViewById<ProgressBar>(R.id.detail_progress).apply {
+            progress = item.progressPercent.coerceAtMost(100)
+            progressTintList = ColorStateList.valueOf(ContextCompat.getColor(requireContext(), if (item.isOnTrack == false) R.color.kitatrack_warning_yellow else R.color.kitatrack_primary_green))
+        }
+        view.findViewById<TextView>(R.id.detail_progress_caption).text = "${item.progressPercent.coerceAtMost(100)}% saved"
+        val stats = view.findViewById<LinearLayout>(R.id.detail_stats_container)
+        addStatRow(stats, "Remaining", Formatters.peso(item.remainingAmount), if (goalReached) R.color.kitatrack_primary_green else R.color.kitatrack_expense_red)
+        addStatRow(stats, "Target date", item.targetDate?.let { Formatters.date(it) } ?: "No date")
+        addStatRow(stats, "Days remaining", item.daysRemaining?.let { "$it days" } ?: "No date")
+        addStatRow(stats, "Required weekly", item.requiredWeeklySaving?.let { Formatters.peso(it) } ?: "Not set")
+        addStatRow(stats, "Current weekly", item.estimatedWeeklySavingAmount?.let { Formatters.peso(it) } ?: "Not set", R.color.kitatrack_primary_green)
+        view.findViewById<MaterialButton>(R.id.detail_primary_button).apply {
+            visibility = if (goalReached && item.isActive) View.VISIBLE else View.GONE
+            text = "Complete Goal"
+            setOnClickListener {
+                sheet.dismiss()
+                showPiggyCompleteConfirmation(item)
             }
-            .show()
+        }
+        view.findViewById<MaterialButton>(R.id.detail_secondary_button).apply {
+            visibility = View.VISIBLE
+            text = if (item.unresolvedMissedCount > 0) "Adjust Plan" else "Record No Money Week"
+            setOnClickListener {
+                sheet.dismiss()
+                if (item.unresolvedMissedCount > 0) showPiggyAdjustmentDialog(item) else showMissedAllowanceDialog(item)
+            }
+        }
+        view.findViewById<MaterialButton>(R.id.detail_edit_button).setOnClickListener {
+            sheet.dismiss()
+            showPiggyDialog(item)
+        }
+        view.findViewById<MaterialButton>(R.id.detail_close_button).setOnClickListener { sheet.dismiss() }
     }
 
     private fun showPiggyCompleteConfirmation(item: com.example.kitatrack.data.local.model.PiggyBankProgress) {
@@ -1064,7 +1248,7 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
                 .setImageResource(budget.categoryName?.let { CategoryIconMapper.expenseIconFor(it) } ?: R.drawable.ic_plans_budget)
             card.findViewById<TextView>(R.id.budget_name).text = budget.name
             card.findViewById<TextView>(R.id.budget_meta).text =
-                "${budget.periodLabel} · ${budget.categoryName ?: "Overall"}${if (!budget.isActive) " · Inactive" else ""}"
+                "${budget.periodLabel} - ${budget.categoryName ?: "Overall"}${if (!budget.isActive) " - Inactive" else ""}"
             card.findViewById<TextView>(R.id.budget_amounts).text =
                 if (budget.remainingAmount >= 0) {
                     ""
@@ -1096,7 +1280,7 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
                     else -> R.color.kitatrack_primary_green
                 }))
             }
-            card.setOnClickListener { showBudgetDialog(budget) }
+            card.setOnClickListener { showBudgetDetails(budget) }
             card.setOnLongClickListener {
                 MaterialAlertDialogBuilder(requireContext()).setTitle("Delete budget?")
                     .setMessage("This deletes the budget only. Transactions will stay unchanged.")
@@ -1106,6 +1290,62 @@ class PlansFragment : Fragment(R.layout.fragment_plans) {
             }
             container.addView(card)
         }
+    }
+
+    private fun showBudgetDetails(budget: BudgetProgress) {
+        val view = layoutInflater.inflate(R.layout.bottom_sheet_plan_detail, null, false)
+        val sheet = showPlanSheet(view, null)
+        val status = budgetStatusLabel(budget)
+        val danger = budget.isOverLimit
+        view.findViewById<TextView>(R.id.detail_title).text = budget.name
+        view.findViewById<TextView>(R.id.detail_subtitle).text = "${budget.periodLabel} - ${budget.categoryName ?: "Overall"}"
+        view.findViewById<TextView>(R.id.detail_status_badge).apply {
+            text = status
+            tintChip(this, when {
+                budget.isOverLimit -> R.color.kitatrack_chip_red_background
+                budget.isNearLimit -> R.color.kitatrack_chip_yellow_background
+                else -> R.color.kitatrack_chip_green_background
+            }, when {
+                budget.isOverLimit -> R.color.kitatrack_expense_red
+                budget.isNearLimit -> R.color.kitatrack_secondary_text
+                else -> R.color.kitatrack_primary_green
+            })
+        }
+        view.findViewById<TextView>(R.id.detail_main_amount).apply {
+            text = Formatters.peso(budget.usedAmount)
+            setTextColor(ContextCompat.getColor(requireContext(), if (danger) R.color.kitatrack_expense_red else R.color.kitatrack_primary_text))
+        }
+        view.findViewById<TextView>(R.id.detail_amount_context).text = "used of ${Formatters.peso(budget.adjustedLimitAmount)}"
+        view.findViewById<ProgressBar>(R.id.detail_progress).apply {
+            progress = budget.usagePercent.coerceAtMost(100)
+            progressTintList = ColorStateList.valueOf(ContextCompat.getColor(requireContext(), when {
+                budget.isOverLimit -> R.color.kitatrack_expense_red
+                budget.isNearLimit -> R.color.kitatrack_warning_yellow
+                else -> R.color.kitatrack_primary_green
+            }))
+        }
+        view.findViewById<TextView>(R.id.detail_progress_caption).text =
+            if (budget.remainingAmount >= 0) "${Formatters.peso(budget.remainingAmount)} remaining" else "${Formatters.peso(-budget.remainingAmount)} over budget"
+        val stats = view.findViewById<LinearLayout>(R.id.detail_stats_container)
+        addStatRow(stats, "Budget limit", Formatters.peso(budget.adjustedLimitAmount))
+        addStatRow(stats, "Used", Formatters.peso(budget.usedAmount), if (danger) R.color.kitatrack_expense_red else R.color.kitatrack_primary_text)
+        addStatRow(stats, "Remaining", if (budget.remainingAmount >= 0) Formatters.peso(budget.remainingAmount) else "-${Formatters.peso(-budget.remainingAmount)}", if (danger) R.color.kitatrack_expense_red else R.color.kitatrack_primary_green)
+        addStatRow(stats, "Period", budget.periodLabel)
+        budget.categoryName?.let { addStatRow(stats, "Category", it) }
+        view.findViewById<MaterialButton>(R.id.detail_primary_button).visibility = View.GONE
+        view.findViewById<MaterialButton>(R.id.detail_secondary_button).visibility = View.GONE
+        view.findViewById<MaterialButton>(R.id.detail_edit_button).setOnClickListener {
+            sheet.dismiss()
+            showBudgetDialog(budget)
+        }
+        view.findViewById<MaterialButton>(R.id.detail_close_button).setOnClickListener { sheet.dismiss() }
+    }
+
+    private fun budgetStatusLabel(budget: BudgetProgress): String = when {
+        !budget.isActive -> "Inactive"
+        budget.isOverLimit -> "Over budget"
+        budget.isNearLimit -> "Near limit"
+        else -> "On track"
     }
 
     private fun showBudgetDialog(existing: BudgetProgress?) {

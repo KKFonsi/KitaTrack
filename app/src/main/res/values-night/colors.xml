@@ -11,7 +11,8 @@
     <color name="kitatrack_soft_danger_background">#3A1F1F</color>
     <color name="kitatrack_soft_subscription_background">#17231D</color>
     <color name="kitatrack_soft_planner_background">#16241C</color>
-    <color name="kitatrack_plan_card_background">#1A231F</color>
+    <color name="kitatrack_plan_card_background">#202B25</color>
+    <color name="kitatrack_plan_card_stroke">#35463D</color>
     <color name="kitatrack_plan_empty_background">#151C18</color>
     <color name="kitatrack_segment_selected_background">#2D4236</color>
     <color name="kitatrack_chip_neutral_background">#26322C</color>

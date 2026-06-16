@@ -17,21 +17,23 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/back_button"
-            style="@style/Widget.Material3.Button.TextButton"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
+            style="@style/Widget.Material3.Button.IconButton"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:backgroundTint="@color/kitatrack_chip_neutral_background"
+            android:contentDescription="Back"
             android:insetLeft="0dp"
             android:insetTop="0dp"
             android:insetRight="0dp"
             android:insetBottom="0dp"
-            android:gravity="center"
-            android:includeFontPadding="false"
             android:minWidth="0dp"
             android:minHeight="0dp"
-            android:text="&#8249;"
-            android:textAllCaps="false"
-            android:textColor="@color/kitatrack_primary_green"
-            android:textSize="26sp" />
+            android:text=""
+            app:cornerRadius="22dp"
+            app:icon="@drawable/ic_arrow_back_24"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
+            app:iconTint="@color/kitatrack_primary_text" />
 
         <TextView
             android:id="@+id/add_transaction_title"
@@ -50,11 +52,15 @@
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/amount_card"
         android:layout_width="match_parent"
-        android:layout_height="132dp"
+        android:layout_height="122dp"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="6dp"
+        android:layout_marginEnd="20dp"
         app:cardBackgroundColor="@color/kitatrack_soft_mint"
-        app:cardCornerRadius="0dp"
+        app:cardCornerRadius="24dp"
         app:cardElevation="0dp"
-        app:strokeWidth="0dp">
+        app:strokeColor="@color/kitatrack_strong_border"
+        app:strokeWidth="1dp">
 
         <TextView
             android:id="@+id/amount_display"
@@ -140,6 +146,11 @@
                 android:id="@+id/context_change_button"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:background="@drawable/kt_chip_green"
+                android:gravity="center"
+                android:minHeight="32dp"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
                 android:text="Change"
                 android:textColor="@color/kitatrack_primary_green"
                 android:textSize="13sp"
@@ -211,7 +222,16 @@
             <Button android:id="@+id/key_9" style="@style/KitaTrackNumpadButton" android:text="9" />
             <Button android:id="@+id/key_decimal" style="@style/KitaTrackNumpadButton" android:text="." />
             <Button android:id="@+id/key_0" style="@style/KitaTrackNumpadButton" android:text="0" />
-            <Button android:id="@+id/key_backspace" style="@style/KitaTrackNumpadButton" android:text="⌫" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/key_backspace"
+                style="@style/KitaTrackNumpadButton"
+                android:contentDescription="Delete digit"
+                android:text=""
+                app:icon="@drawable/ic_key_delete"
+                app:iconGravity="textStart"
+                app:iconPadding="0dp"
+                app:iconSize="22dp"
+                app:iconTint="@color/kitatrack_secondary_text" />
         </GridLayout>
     </LinearLayout>
 
@@ -222,11 +242,11 @@
         android:layout_marginStart="20dp"
         android:layout_marginTop="8dp"
         android:layout_marginEnd="20dp"
-        android:layout_marginBottom="12dp"
-        android:minHeight="54dp"
+        android:layout_marginBottom="14dp"
+        android:minHeight="56dp"
         android:textAllCaps="false"
         android:textColor="@color/white"
         android:textSize="16sp"
         android:textStyle="bold"
-        app:cornerRadius="16dp" />
+        app:cornerRadius="18dp" />
 </LinearLayout>

@@ -11,7 +11,6 @@ import com.example.kitatrack.MainActivity
 import com.example.kitatrack.R
 import com.example.kitatrack.data.repository.DebtRepository
 import com.example.kitatrack.data.repository.SubscriptionRepository
-import com.example.kitatrack.ui.quickadd.QuickAddActivity
 import com.example.kitatrack.util.Formatters
 import kotlinx.coroutines.flow.first
 
@@ -66,14 +65,14 @@ object KitaTrackWidgetUpdater {
             setTextViewText(
                 R.id.widget_reserve_summary,
                 if (summary.hasData) {
-                    "Debt ${Formatters.peso(summary.debtReserve)}  ·  Piggy ${Formatters.peso(summary.piggyBankTotal)}  ·  Subs ${Formatters.peso(summary.subscriptionReserve)}"
+                    "Debt ${Formatters.peso(summary.debtReserve)}\nPiggy ${Formatters.peso(summary.piggyBankTotal)}  |  Subs ${Formatters.peso(summary.subscriptionReserve)}"
                 } else {
                     "Open app to refresh"
                 }
             )
             setOnClickPendingIntent(R.id.widget_root, openAppIntent(context))
-            setOnClickPendingIntent(R.id.widget_income_button, quickAddIntent(context, QuickAddActivity.TYPE_INCOME, 100))
-            setOnClickPendingIntent(R.id.widget_expense_button, quickAddIntent(context, QuickAddActivity.TYPE_EXPENSE, 101))
+            setOnClickPendingIntent(R.id.widget_income_button, addTransactionIntent(context, "INCOME", 100))
+            setOnClickPendingIntent(R.id.widget_expense_button, addTransactionIntent(context, "EXPENSE", 101))
         }
     }
 
@@ -82,8 +81,11 @@ object KitaTrackWidgetUpdater {
         return PendingIntent.getActivity(context, 99, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     }
 
-    private fun quickAddIntent(context: Context, type: String, requestCode: Int): PendingIntent {
-        val intent = Intent(context, QuickAddActivity::class.java).putExtra(QuickAddActivity.EXTRA_TYPE, type)
+    private fun addTransactionIntent(context: Context, type: String, requestCode: Int): PendingIntent {
+        val intent = Intent(context, MainActivity::class.java)
+            .setAction("${MainActivity.ACTION_ADD_TRANSACTION}.$type")
+            .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            .putExtra(MainActivity.EXTRA_ADD_TRANSACTION_TYPE, type)
         return PendingIntent.getActivity(context, requestCode, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     }
 }

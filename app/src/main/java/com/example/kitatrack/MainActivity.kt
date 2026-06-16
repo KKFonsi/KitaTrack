@@ -1,11 +1,13 @@
 package com.example.kitatrack
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.navigation.fragment.NavHostFragment
+import androidx.navigation.NavOptions
 import androidx.navigation.ui.setupWithNavController
 import androidx.lifecycle.lifecycleScope
 import com.example.kitatrack.widget.KitaTrackWidgetUpdater
@@ -29,8 +31,29 @@ class MainActivity : AppCompatActivity() {
         val navHostFragment = supportFragmentManager
             .findFragmentById(R.id.nav_host_fragment) as NavHostFragment
         val navController = navHostFragment.navController
-        findViewById<BottomNavigationView>(R.id.bottom_navigation)
-            .setupWithNavController(navController)
+        val bottomNavigation = findViewById<BottomNavigationView>(R.id.bottom_navigation)
+        bottomNavigation.setupWithNavController(navController)
+        // Reports is temporarily hidden from the public APK while it remains under development.
+        // If Android restores an old Reports destination, send the user back to Dashboard.
+        navController.addOnDestinationChangedListener { controller, destination, _ ->
+            if (destination.id == R.id.reportsFragment) {
+                controller.navigate(
+                    R.id.dashboardFragment,
+                    null,
+                    NavOptions.Builder()
+                        .setPopUpTo(R.id.reportsFragment, true)
+                        .setLaunchSingleTop(true)
+                        .build()
+                )
+            }
+        }
+        handleWidgetAddTransactionIntent(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleWidgetAddTransactionIntent(intent)
     }
 
     override fun onResume() {
@@ -38,5 +61,22 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch(Dispatchers.IO) {
             KitaTrackWidgetUpdater.updateAll(applicationContext)
         }
+    }
+
+    private fun handleWidgetAddTransactionIntent(intent: Intent?) {
+        val type = intent?.getStringExtra(EXTRA_ADD_TRANSACTION_TYPE) ?: return
+        val normalizedType = if (type == "INCOME") "INCOME" else "EXPENSE"
+        val navHostFragment = supportFragmentManager
+            .findFragmentById(R.id.nav_host_fragment) as? NavHostFragment ?: return
+        navHostFragment.navController.navigate(
+            R.id.addTransactionFragment,
+            Bundle().apply { putString("initialType", normalizedType) }
+        )
+        intent.removeExtra(EXTRA_ADD_TRANSACTION_TYPE)
+    }
+
+    companion object {
+        const val ACTION_ADD_TRANSACTION = "com.example.kitatrack.action.ADD_TRANSACTION"
+        const val EXTRA_ADD_TRANSACTION_TYPE = "com.example.kitatrack.extra.ADD_TRANSACTION_TYPE"
     }
 }

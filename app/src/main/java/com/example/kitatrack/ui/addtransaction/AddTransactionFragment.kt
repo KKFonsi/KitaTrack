@@ -156,9 +156,12 @@ class AddTransactionFragment : Fragment(R.layout.fragment_add_transaction) {
         val income = screenType == TransactionType.INCOME
         view.findViewById<TextView>(R.id.add_transaction_title).text = if (income) "Add Income" else "Add Expense"
         view.findViewById<TextView>(R.id.category_prompt).text = if (income) "Where is this from?" else "What is this for?"
-        view.findViewById<MaterialCardView>(R.id.amount_card).setCardBackgroundColor(
-            ContextCompat.getColor(requireContext(), if (income) R.color.kitatrack_soft_mint else R.color.kitatrack_soft_danger_background)
-        )
+        view.findViewById<MaterialCardView>(R.id.amount_card).apply {
+            setCardBackgroundColor(
+                ContextCompat.getColor(requireContext(), if (income) R.color.kitatrack_soft_mint else R.color.kitatrack_soft_danger_background)
+            )
+            strokeColor = ContextCompat.getColor(requireContext(), if (income) R.color.kitatrack_strong_border else R.color.kitatrack_chip_red_background)
+        }
         view.findViewById<TextView>(R.id.amount_display).setTextColor(
             ContextCompat.getColor(requireContext(), if (income) R.color.kitatrack_primary_green else R.color.kitatrack_expense_red)
         )
